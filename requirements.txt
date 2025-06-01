@@ -1,0 +1,4 @@
+beautifulsoup4
+google-generative-ai
+pandas
+requests
