@@ -1,0 +1,38 @@
+name: Daily DIP News
+
+# Запуск каждый день в 10:00 UTC (это соответствует 13:00 по Москве, UTC+3)
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  run-dip-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install jupyter nbconvert
+
+      - name: Execute DIP News notebook
+        run: |
+          # Если имя вашего ноутбука содержит пробелы или скобки, оберните его в кавычки:
+          jupyter nbconvert --to notebook --execute "dip_news (1).ipynb" --output executed.ipynb
+
+      # Если вы предпочитаете запустить скрипт напрямую (если вы превратили ноутбук в .py), 
+      # раскомментируйте следующие строки и закомментируйте шаг с nbconvert:
+      #
+      # - name: Run DIP News script
+      #   run: |
+      #     python dip_news.py
