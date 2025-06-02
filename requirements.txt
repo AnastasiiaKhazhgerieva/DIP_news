@@ -1,0 +1,8 @@
+requests
+beautifulsoup4
+pandas
+git+https://github.com/googleapis/python-generative-ai.git@main#egg=google-generative-ai
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
