@@ -750,25 +750,7 @@ section_to_finish_bullets_prompt = {
     ]
 }
 
-file_id = find_file_in_drive("new lists design, prompt beginning.txt")
-
-try:
-    prompt_design_start = download_text_file(file_id)
-except Exception as e:
-    print("Ошибка при скачивании файла:", e)
-    prompt_design_start = ""
-
-section_to_prompt_design_finish = {
-    "world": [
-        'Пожалуйста, оформи нумерованный список для раздела по мировой экономике в соответствии с требованиями к оформлению буллитов. Пришли итоговый результат текстом в виде списка. НИКАК НЕ ИЗМЕНЯЙ ССЫЛКИ ИЛИ НАЗВАНИЯ НОВОСТЕЙ.'
-    ],
-    "rus": [
-        'Пожалуйста, оформи нумерованный список для раздела по россиийской экономике в соответствии с требованиями к оформлению буллитов. Пришли итоговый результат текстом в виде списка. НИКАК НЕ ИЗМЕНЯЙ ССЫЛКИ ИЛИ НАЗВАНИЯ НОВОСТЕЙ.'
-    ],
-    "prices": [
-        'Пожалуйста, оформи нумерованный список для раздела по новостям, релевантным для динамики российских цен, в соответствии с требованиями к оформлению буллитов. Пришли итоговый результат текстомв виде списка. НИКАК НЕ ИЗМЕНЯЙ ССЫЛКИ ИЛИ НАЗВАНИЯ НОВОСТЕЙ.'
-    ]
-}
+prompt_prioritise = 'Пожалуйста, оставь в разделе не более 30 наиболее новостей, в наибольшей степени подходящих под критерии. Пришли итоговый результат текстом в виде списка. НИКАК НЕ ИЗМЕНЯЙ ССЫЛКИ ИЛИ НАЗВАНИЯ НОВОСТЕЙ.'
 
 def create_news_lists(section):
     if section not in section_to_files:
@@ -877,27 +859,21 @@ create_news_lists("rus")
 time.sleep(60)
 create_news_lists("prices")
 
-def design_news_lists(section):
+def prioritise(section):
     if section not in section_to_files:
         raise ValueError(f"Section '{section}' unknown.")
 
-
     file_name = f"{section}.txt"
     folder_id_input = MY_FOLDER_ID
+    file_id = find_file_in_drive(file_name)
+    news_list = download_text_file(file_id)
 
-    try:
-        file_id = find_file_in_drive(file_name)
-        news_list = download_text_file(file_id)
-    except Exception as e:
-        print("Error, no file found.")
-        news_list = ""
-
-    prompt_design_finish = section_to_prompt_design_finish[section]
+    prompt_prioritise = section_to_prompt_prioritise[section]
 
     raw_parts = [
         news_list,
-        prompt_design_start,
-        prompt_design_finish
+        prompt_list_start,
+        prompt_prioritise
     ]
 
     prompt_parts = []
@@ -911,17 +887,17 @@ def design_news_lists(section):
     try:
         response = model_obj.generate_content(prompt_parts)
     except Exception as e:
-        print(f"Error in model.generate_content: {e}.")
-        return
+        print(f"Error in model.generate_content for '{json_filename}': {e}.")
+        continue
 
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, response.text)
 
-#design_news_lists("world")
-#time.sleep(60)
-#design_news_lists("rus")
-#time.sleep(60)
-#design_news_lists("prices")
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
+prioritise("prices")
 
 def create_bullets(section):
 
