@@ -1,8 +1,8 @@
 requests
 beautifulsoup4
 pandas
-google-generative-ai @ git+https://github.com/googleapis/python-generative-ai.git@main
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-google-api-python-client
+google.generativeai
+google.oauth2.service_account
+googleapiclient.discovery
+googleapiclient.errors
+googleapiclient.http
