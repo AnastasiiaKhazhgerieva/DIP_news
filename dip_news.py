@@ -520,7 +520,7 @@ def fetch_autostat(dates, output_file,
 #print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # Parameters
-days_before = 2
+days_before = 4
 dates = get_last_dates(days_before)
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
@@ -798,6 +798,8 @@ def create_news_lists(section):
         print("Error, no file found.")
         example = ""
 
+    file_name = f"{section}.txt"
+
         #drive_folder = "/content/drive/MyDrive"
         #file_name = f"{section}.txt"
         #file_path = f"{drive_folder}/{file_name}"
@@ -895,8 +897,7 @@ def design_news_lists(section):
     raw_parts = [
         news_list,
         prompt_design_start,
-        prompt_design_finish,
-        example
+        prompt_design_finish
     ]
 
     prompt_parts = []
@@ -916,11 +917,11 @@ def design_news_lists(section):
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, response.text)
 
-design_news_lists("world")
-time.sleep(60)
-design_news_lists("rus")
-time.sleep(60)
-design_news_lists("prices")
+#design_news_lists("world")
+#time.sleep(60)
+#design_news_lists("rus")
+#time.sleep(60)
+#design_news_lists("prices")
 
 def create_bullets(section):
 
