@@ -2,7 +2,3 @@ requests
 beautifulsoup4
 pandas
 google.generativeai
-google.oauth2.service_account
-googleapiclient.discovery
-googleapiclient.errors
-googleapiclient.http
