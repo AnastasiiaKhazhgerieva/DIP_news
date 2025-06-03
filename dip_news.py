@@ -888,7 +888,6 @@ def prioritise(section):
         response = model_obj.generate_content(prompt_parts)
     except Exception as e:
         print(f"Error in model.generate_content for '{json_filename}': {e}.")
-        continue
 
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, response.text)
