@@ -714,10 +714,10 @@ except Exception as e:
 file_id = find_file_in_drive("bullets, prompt beginning.txt")
 
 try:
-    prompt_list_start = download_text_file(file_id)
+    prompt_bullets_start = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
-    prompt_list_start = ""
+    prompt_bullets_start = ""
 
 #try:
 #    with open(file_path, 'r', encoding='utf-8') as f:
@@ -763,7 +763,7 @@ def create_news_lists(section):
 
         try:
           file_id = find_file_in_drive(file_name)
-          prompt_list_start = download_text_file(file_id)
+          list_start = download_text_file(file_id)
         except Exception as e:
           print(f"Warning, no file found.")
           list_start = ""
