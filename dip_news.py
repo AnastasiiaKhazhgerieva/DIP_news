@@ -736,7 +736,7 @@ section_to_continue_prompt = {
         'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них только те, что строго соответствуют критериям и могут быть включены в нумерованный список для раздела по новостям, релевантным для динамики российских цен.'
     ]
 }
-prompt_list_finish = 'Пришли мне json файл, в котором останутся только новости, соответствующие требованиям. В json оставь только название и полную ссылку. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ JSON ФАЙЛА.'
+prompt_list_finish = 'Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
 
 section_to_finish_bullets_prompt = {
     "world": [
@@ -787,6 +787,17 @@ def create_news_lists(section):
           print(f"Warning, no file found.")
           list_start = ""
 
+
+    file_name = "design_example.txt"
+    folder_id_input = MY_FOLDER_ID
+
+    try:
+        file_id = find_file_in_drive(file_name)
+        example = download_text_file(file_id)
+    except Exception as e:
+        print("Error, no file found.")
+        example = ""
+
         #drive_folder = "/content/drive/MyDrive"
         #file_name = f"{section}.txt"
         #file_path = f"{drive_folder}/{file_name}"
@@ -825,10 +836,11 @@ def create_news_lists(section):
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
 
         raw_parts = [
+            news_json_string,
             prompt_list_start,
             prompt_list_continue,
             prompt_list_finish,
-            news_json_string
+            example
         ]
 
         prompt_parts = []
@@ -866,16 +878,6 @@ create_news_lists("prices")
 def design_news_lists(section):
     if section not in section_to_files:
         raise ValueError(f"Section '{section}' unknown.")
-
-    file_name = "design_example.txt"
-    folder_id_input = MY_FOLDER_ID
-
-    try:
-        file_id = find_file_in_drive(file_name)
-        example = download_text_file(file_id)
-    except Exception as e:
-        print("Error, no file found.")
-        example = ""
 
 
     file_name = f"{section}.txt"
