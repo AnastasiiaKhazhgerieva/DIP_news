@@ -868,8 +868,6 @@ def prioritise(section):
     file_id = find_file_in_drive(file_name)
     news_list = download_text_file(file_id)
 
-    prompt_prioritise = section_to_prompt_prioritise[section]
-
     raw_parts = [
         news_list,
         prompt_list_start,
