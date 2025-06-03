@@ -790,7 +790,7 @@ def create_news_lists(section):
     all_text = list_start + "".join(combined_text_parts)
 
     # Записываем итог в тот же файл <section>.txt на Google Drive
-    save_to_drive_root(file_name, all_text)
+    save_to_drive(file_name, all_text)
 
 create_news_lists("world")
 time.sleep(60)
@@ -835,7 +835,7 @@ def create_bullets(section):
         return
 
     file_name = f"report_{section}.txt"
-    save_to_drive_root(file_name, response.text)
+    save_to_drive(file_name, response.text)
 
 if datetime.today().weekday() == 3:
   create_bullets("world")
