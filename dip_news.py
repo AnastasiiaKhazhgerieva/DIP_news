@@ -819,10 +819,6 @@ def create_news_lists(section):
     save_to_drive(file_name, all_text)
 
 create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
 
 def design_news_lists(section):
     if section not in section_to_files:
@@ -864,10 +860,6 @@ def design_news_lists(section):
     save_to_drive(file_name, response.text)
 
 design_news_lists("world")
-time.sleep(60)
-design_news_lists("rus")
-time.sleep(60)
-design_news_lists("prices")
 
 def create_bullets(section):
 
