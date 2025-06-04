@@ -631,7 +631,7 @@ def fetch_autostat(dates, output_file,
 
 # Parameters
 #days_before = 4
-dates = get_last_dates(n_days=0, end_date=date(2025, 5, 31))
+dates = get_last_dates(n_days=0, end_date=date(2025, 6, 1))
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
