@@ -689,8 +689,6 @@ def save_to_drive(file_name: str, data):
 
 # drive.mount('/content/drive')
 
-prompt_list_start
-
 ### Prompts
 
 #file_path = '/content/drive/MyDrive/news lists, prompt beginning.txt'
