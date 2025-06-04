@@ -576,37 +576,27 @@ section_to_files = {
 
 ### Functions for google drive
 
-def find_file_in_drive(file_name: str) -> str:
-    # try in root
+def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
+    # Ищем файл в конкретной папке folder_id
     try:
-        resp_root = drive_service.files().list(
-            q=f"name = '{file_name}' and 'root' in parents and trashed = false",
+        resp = drive_service.files().list(
+            q=(
+                f"name = '{file_name}' "
+                f"and '{folder_id}' in parents "
+                f"and trashed = false"
+            ),
             spaces="drive",
             fields="files(id, name)",
             pageSize=1
         ).execute()
     except HttpError as e:
-        raise RuntimeError(f"Ошибка при запросе к Drive API (root search): {e}")
+        raise RuntimeError(f"Ошибка при запросе к Drive API: {e}")
 
-    items_root = resp_root.get("files", [])
-    if items_root:
-        return items_root[0]["id"]
+    items = resp.get("files", [])
+    if items:
+        return items[0]["id"]
 
-    # try in sharedWithMe
-    try:
-        resp_shared = drive_service.files().list(
-            q=f"name = '{file_name}' and trashed = false and sharedWithMe = true",
-            spaces="drive",
-            fields="files(id, name, parents)",
-            pageSize=1
-        ).execute()
-    except HttpError as e:
-        raise RuntimeError(f"Ошибка при запросе к Drive API (sharedWithMe search): {e}")
-
-    items_shared = resp_shared.get("files", [])
-    if items_shared:
-        return items_shared[0]["id"]
-    raise FileNotFoundError(f"File '{file_name}' not found in root or sharedWithMe.")
+    raise FileNotFoundError(f"File '{file_name}' not found in folder {folder_id}.")
 
 def download_text_file(fid: str) -> str:
     request = drive_service.files().get_media(fileId=fid)
@@ -693,7 +683,7 @@ def save_to_drive(file_name: str, data):
 
 #file_path = '/content/drive/MyDrive/news lists, prompt beginning.txt'
 
-file_id = find_file_in_drive("news lists, prompt beginning.txt")
+file_id = find_file_in_drive("news lists, prompt beginning.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 
 try:
     prompt_list_start = download_text_file(file_id)
@@ -709,7 +699,7 @@ except Exception as e:
 #except Exception as e:
 #    print(f"Error while reading file: {e}")
 
-file_id = find_file_in_drive("bullets, prompt beginning.txt")
+file_id = find_file_in_drive("bullets, prompt beginning.txt","1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 
 try:
     prompt_bullets_start = download_text_file(file_id)
