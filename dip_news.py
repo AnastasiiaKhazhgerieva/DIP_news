@@ -57,8 +57,6 @@ API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска 
 genai.configure(api_key=API_KEY)
 model_obj = genai.GenerativeModel('gemini-1.5-flash')
 
-datetime.date(2025, 6, 4)
-
 ### Functions for scrapping
 
 ## Defining and formatting dates
