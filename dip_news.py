@@ -630,8 +630,8 @@ def fetch_autostat(dates, output_file,
 #print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # Parameters
-#days_before = 4
-dates = get_last_dates(n_days=0, end_date=date(2025, 6, 2))
+days_before = 4
+#dates = get_last_dates(n_days=0, end_date=date(2025, 6, 2))
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
