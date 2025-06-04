@@ -57,6 +57,109 @@ API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска 
 genai.configure(api_key=API_KEY)
 model_obj = genai.GenerativeModel('gemini-1.5-flash')
 
+### Functions for google drive
+
+def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
+    # Ищем файл в конкретной папке folder_id
+    try:
+        resp = drive_service.files().list(
+            q=(
+                f"name = '{file_name}' "
+                f"and '{folder_id}' in parents "
+                f"and trashed = false"
+            ),
+            spaces="drive",
+            fields="files(id, name)",
+            pageSize=1
+        ).execute()
+    except HttpError as e:
+        raise RuntimeError(f"Ошибка при запросе к Drive API: {e}")
+
+    items = resp.get("files", [])
+    if items:
+        return items[0]["id"]
+
+    raise FileNotFoundError(f"File '{file_name}' not found in folder {folder_id}.")
+
+def download_text_file(fid: str) -> str:
+    request = drive_service.files().get_media(fileId=fid)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+    return fh.getvalue().decode("utf-8")
+
+def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
+    """
+    Сохраняет `data` на Google Drive в файл file_name внутри папки MY_FOLDER_ID.
+    Если data — строка, файл будет сохранён как plain text;
+    иначе data считается JSON-совместимой структурой и сериализуется в JSON.
+
+    Если файл с таким именем уже есть — перезаписывает, иначе создаёт новый.
+    Возвращает метаданные созданного/обновлённого файла.
+    """
+    # 1) Подготовим байты и mimeType в зависимости от типа data
+    if isinstance(data, str):
+        # Сохраняем как plain text
+        content_bytes = data.encode("utf-8")
+        mime_type = "text/plain"
+    else:
+        # Считаем, что data — это Python-структура (dict, list и т.д.), сохраняем как JSON
+        json_str = json.dumps(data, ensure_ascii=False, indent=2)
+        content_bytes = json_str.encode("utf-8")
+        mime_type = "application/json"
+
+    # 2) Проверим, есть ли файл с таким именем в нужной папке
+    existing_file_id = None
+    try:
+        resp = drive_service.files().list(
+            q=f"name = '{file_name}' and '{my_folder}' in parents and trashed = false",
+            spaces="drive",
+            fields="files(id, name)",
+            pageSize=1
+        ).execute()
+        items = resp.get("files", [])
+        if items:
+            existing_file_id = items[0]["id"]
+    except Exception as e:
+        print("Warning: не удалось проверить существование файла в Drive:", e)
+
+    # 3) Подготовим медиаконтент
+    fh = io.BytesIO(content_bytes)
+    media = MediaIoBaseUpload(fh, mimetype=mime_type, resumable=False)
+
+    if existing_file_id:
+        # 4a) Если файл уже есть — перезапишем его
+        try:
+            updated = drive_service.files().update(
+                fileId=existing_file_id,
+                media_body=media
+            ).execute()
+            print(f"Файл '{file_name}' обновлён (ID={updated['id']}).")
+            return updated
+        except Exception as e:
+            print(f"Ошибка при обновлении файла '{file_name}': {e}")
+            raise
+    else:
+        # 4b) Если файла нет — создадим новый в вашей папке
+        file_metadata = {
+            "name": file_name,
+            "parents": [my_folder],
+            "mimeType": mime_type
+        }
+        try:
+            created = drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields="id, webViewLink"
+            ).execute()
+            print(f"Создан новый файл '{file_name}' (ID={created['id']}).")
+            return created
+        except Exception as e:
+            print(f"Ошибка при создании файла '{file_name}': {e}")
+            raise
+
 ### Functions for scrapping
 
 ## Defining and formatting dates
@@ -108,8 +211,9 @@ def fetch_kom(rubrics, dates, output_file,
             except Exception as e:
                 print(f"[ERROR] {e} when fetching {url}")
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(all_items, f, ensure_ascii=False, indent=2)
+    #with open(output_file, "w", encoding="utf-8") as f:
+    #    json.dump(all_items, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, all_items, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved Kommersant data to {output_file}")
 
 
@@ -133,8 +237,9 @@ def fetch_ved(dates, output_file,
         except Exception as e:
             all_news.append({"error": str(e)})
 
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(all_news, f, ensure_ascii=False, indent=2)
+    #with open(output_file, 'w', encoding='utf-8') as f:
+    #    json.dump(all_news, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, all_news, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved Vedomosti data to {output_file}")
 
 # RBC scraper
@@ -244,8 +349,9 @@ def fetch_rbc(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(unique, f, ensure_ascii=False, indent=2)
+    #with open(output_file, "w", encoding="utf-8") as f:
+    #    json.dump(unique, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RBC data to {output_file}")
 
 # Agro investor scraper
@@ -320,8 +426,9 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
             "link": url
         })
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(news_list, f, ensure_ascii=False, indent=2)
+    #with open(output_file, "w", encoding="utf-8") as f:
+    #    json.dump(news_list, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, news_list, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved Agroinvestor data to {output_file}")
 
@@ -372,8 +479,9 @@ def fetch_rg(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(unique, f, ensure_ascii=False, indent=2)
+    #with open(output_file, "w", encoding="utf-8") as f:
+    #    json.dump(unique, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RG data to {output_file}")
 
 # RIA scraper
@@ -425,8 +533,9 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
             unique.append(item)
 
     # Save to JSON
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(unique, f, ensure_ascii=False, indent=2)
+    #with open(output_file, "w", encoding="utf-8") as f:
+    #    json.dump(unique, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved RIA data to {output_file}")
 
@@ -510,12 +619,13 @@ def fetch_autostat(dates, output_file,
                 })
                 seen_urls.add(full_url)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(all_collected, f, ensure_ascii=False, indent=2)
+    #with open(output_file, "w", encoding="utf-8") as f:
+    #    json.dump(all_collected, f, ensure_ascii=False, indent=2)
+    save_to_drive(output_file, all_collected, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved Autostat data to {output_file}")
 
-#with open('rbc.json', encoding='utf-8') as f:
+#with open('agro.json', encoding='utf-8') as f:
 #    data = json.load(f)
 #print(json.dumps(data, ensure_ascii=False, indent=2))
 
@@ -573,109 +683,6 @@ section_to_files = {
         "autostat.json"
     ]
 }
-
-### Functions for google drive
-
-def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
-    # Ищем файл в конкретной папке folder_id
-    try:
-        resp = drive_service.files().list(
-            q=(
-                f"name = '{file_name}' "
-                f"and '{folder_id}' in parents "
-                f"and trashed = false"
-            ),
-            spaces="drive",
-            fields="files(id, name)",
-            pageSize=1
-        ).execute()
-    except HttpError as e:
-        raise RuntimeError(f"Ошибка при запросе к Drive API: {e}")
-
-    items = resp.get("files", [])
-    if items:
-        return items[0]["id"]
-
-    raise FileNotFoundError(f"File '{file_name}' not found in folder {folder_id}.")
-
-def download_text_file(fid: str) -> str:
-    request = drive_service.files().get_media(fileId=fid)
-    fh = io.BytesIO()
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
-    return fh.getvalue().decode("utf-8")
-
-def save_to_drive(file_name: str, data):
-    """
-    Сохраняет `data` на Google Drive в файл file_name внутри папки MY_FOLDER_ID.
-    Если data — строка, файл будет сохранён как plain text;
-    иначе data считается JSON-совместимой структурой и сериализуется в JSON.
-
-    Если файл с таким именем уже есть — перезаписывает, иначе создаёт новый.
-    Возвращает метаданные созданного/обновлённого файла.
-    """
-    # 1) Подготовим байты и mimeType в зависимости от типа data
-    if isinstance(data, str):
-        # Сохраняем как plain text
-        content_bytes = data.encode("utf-8")
-        mime_type = "text/plain"
-    else:
-        # Считаем, что data — это Python-структура (dict, list и т.д.), сохраняем как JSON
-        json_str = json.dumps(data, ensure_ascii=False, indent=2)
-        content_bytes = json_str.encode("utf-8")
-        mime_type = "application/json"
-
-    # 2) Проверим, есть ли файл с таким именем в нужной папке
-    existing_file_id = None
-    try:
-        resp = drive_service.files().list(
-            q=f"name = '{file_name}' and '{MY_FOLDER_ID}' in parents and trashed = false",
-            spaces="drive",
-            fields="files(id, name)",
-            pageSize=1
-        ).execute()
-        items = resp.get("files", [])
-        if items:
-            existing_file_id = items[0]["id"]
-    except Exception as e:
-        print("Warning: не удалось проверить существование файла в Drive:", e)
-
-    # 3) Подготовим медиаконтент
-    fh = io.BytesIO(content_bytes)
-    media = MediaIoBaseUpload(fh, mimetype=mime_type, resumable=False)
-
-    if existing_file_id:
-        # 4a) Если файл уже есть — перезапишем его
-        try:
-            updated = drive_service.files().update(
-                fileId=existing_file_id,
-                media_body=media
-            ).execute()
-            print(f"Файл '{file_name}' обновлён (ID={updated['id']}).")
-            return updated
-        except Exception as e:
-            print(f"Ошибка при обновлении файла '{file_name}': {e}")
-            raise
-    else:
-        # 4b) Если файла нет — создадим новый в вашей папке
-        file_metadata = {
-            "name": file_name,
-            "parents": [MY_FOLDER_ID],
-            "mimeType": mime_type
-        }
-        try:
-            created = drive_service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields="id, webViewLink"
-            ).execute()
-            print(f"Создан новый файл '{file_name}' (ID={created['id']}).")
-            return created
-        except Exception as e:
-            print(f"Ошибка при создании файла '{file_name}': {e}")
-            raise
 
 # drive.mount('/content/drive')
 
@@ -755,25 +762,13 @@ def create_news_lists(section):
         folder_id_input = MY_FOLDER_ID
 
         try:
-          file_id = find_file_in_drive(file_name)
-          list_start = download_text_file(file_id)
-        except Exception as e:
-          print(f"Warning, no file found.")
-          list_start = ""
-
-        #drive_folder = "/content/drive/MyDrive"
-        #file_name = f"{section}.txt"
-        #file_path = f"{drive_folder}/{file_name}"
-
-        #try:
-        #    with open(file_path, "r", encoding="utf-8") as f:
-        #        list_start = f.read()
-        #except FileNotFoundError:
-        #    print(f"Warning: file not found: {file_path}")
-        #    list_start = ""
-        #except Exception as e:
-        #    print(f"Error reading file: {e}")
-        #    list_start = ""
+            file_id = find_file_in_drive(file_name)
+            list_start = download_text_file(file_id)
+        except Exception:
+            print("Warning, no file found.")
+            list_start = ""
+    else:
+        list_start = ""
 
     # Достаём список JSON-файлов и соответствующий prompt_list_continue
     json_files = section_to_files[section]
@@ -787,15 +782,32 @@ def create_news_lists(section):
             continue
 
         try:
-            with open(json_filename, 'r', encoding='utf-8') as f:
-                news_data = json.load(f)
+            file_id = find_file_in_drive(json_filename, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+            raw_text = download_text_file(file_id)
         except FileNotFoundError:
             print(f"Файл '{json_filename}' не найден. Пропускаем.")
             continue
+        except Exception as e:
+            print(f"Ошибка при скачивании '{json_filename}': {e}. Пропускаем.")
+            continue
+
+        # Если файл пустой или содержит только пробельные символы, пропускаем
+        if not isinstance(raw_text, str) or not raw_text.strip():
+            print(f"JSON '{json_filename}' пустой. Пропускаем.")
+            continue
+
+        # Парсим JSON-строку в Python-объект. Если невалидный JSON или пустой объект/список, пропускаем.
+        try:
+            news_data = json.loads(raw_text)
         except json.JSONDecodeError as e:
             print(f"Ошибка JSON в '{json_filename}': {e}. Пропускаем.")
             continue
 
+        if isinstance(news_data, (list, dict)) and len(news_data) == 0:
+            print(f"JSON '{json_filename}' содержит пустую структуру. Пропускаем.")
+            continue
+
+        # Преобразуем Python-объект в форматированный JSON для модели
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
 
         raw_parts = [
@@ -814,6 +826,7 @@ def create_news_lists(section):
             else:
                 prompt_parts.append(str(part))
 
+        # Теперь, когда JSON точно не пуст, отправляем запрос модели
         try:
             response = model_obj.generate_content(prompt_parts)
         except Exception as e:
@@ -832,6 +845,7 @@ def create_news_lists(section):
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, all_text)
 
+# Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 create_news_lists("world")
 time.sleep(60)
 create_news_lists("rus")
