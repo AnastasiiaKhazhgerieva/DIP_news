@@ -60,7 +60,6 @@ model_obj = genai.GenerativeModel('gemini-1.5-flash')
 ### Functions for google drive
 
 def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
-    # Ищем файл в конкретной папке folder_id
     try:
         resp = drive_service.files().list(
             q=(
@@ -73,7 +72,7 @@ def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKU
             pageSize=1
         ).execute()
     except HttpError as e:
-        raise RuntimeError(f"Ошибка при запросе к Drive API: {e}")
+        raise RuntimeError(f"Error accessing Drive API: {e}")
 
     items = resp.get("files", [])
     if items:
@@ -91,26 +90,17 @@ def download_text_file(fid: str) -> str:
     return fh.getvalue().decode("utf-8")
 
 def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
-    """
-    Сохраняет `data` на Google Drive в файл file_name внутри папки MY_FOLDER_ID.
-    Если data — строка, файл будет сохранён как plain text;
-    иначе data считается JSON-совместимой структурой и сериализуется в JSON.
 
-    Если файл с таким именем уже есть — перезаписывает, иначе создаёт новый.
-    Возвращает метаданные созданного/обновлённого файла.
-    """
-    # 1) Подготовим байты и mimeType в зависимости от типа data
     if isinstance(data, str):
-        # Сохраняем как plain text
+        # save as plain text
         content_bytes = data.encode("utf-8")
         mime_type = "text/plain"
     else:
-        # Считаем, что data — это Python-структура (dict, list и т.д.), сохраняем как JSON
+        # as JSON
         json_str = json.dumps(data, ensure_ascii=False, indent=2)
         content_bytes = json_str.encode("utf-8")
         mime_type = "application/json"
 
-    # 2) Проверим, есть ли файл с таким именем в нужной папке
     existing_file_id = None
     try:
         resp = drive_service.files().list(
@@ -123,26 +113,25 @@ def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
         if items:
             existing_file_id = items[0]["id"]
     except Exception as e:
-        print("Warning: не удалось проверить существование файла в Drive:", e)
+        print("Warning: can't check, if the file already exists:", e)
 
-    # 3) Подготовим медиаконтент
     fh = io.BytesIO(content_bytes)
     media = MediaIoBaseUpload(fh, mimetype=mime_type, resumable=False)
 
     if existing_file_id:
-        # 4a) Если файл уже есть — перезапишем его
+        # then rewrite
         try:
             updated = drive_service.files().update(
                 fileId=existing_file_id,
                 media_body=media
             ).execute()
-            print(f"Файл '{file_name}' обновлён (ID={updated['id']}).")
+            print(f"File '{file_name}' updated (ID={updated['id']}).")
             return updated
         except Exception as e:
-            print(f"Ошибка при обновлении файла '{file_name}': {e}")
+            print(f"Error updating file '{file_name}': {e}")
             raise
     else:
-        # 4b) Если файла нет — создадим новый в вашей папке
+        # then create
         file_metadata = {
             "name": file_name,
             "parents": [my_folder],
@@ -154,10 +143,10 @@ def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
                 media_body=media,
                 fields="id, webViewLink"
             ).execute()
-            print(f"Создан новый файл '{file_name}' (ID={created['id']}).")
+            print(f"New file created: '{file_name}', (ID={created['id']}).")
             return created
         except Exception as e:
-            print(f"Ошибка при создании файла '{file_name}': {e}")
+            print(f"Error creating a new file '{file_name}': {e}")
             raise
 
 ### Functions for scrapping
@@ -211,8 +200,6 @@ def fetch_kom(rubrics, dates, output_file,
             except Exception as e:
                 print(f"[ERROR] {e} when fetching {url}")
 
-    #with open(output_file, "w", encoding="utf-8") as f:
-    #    json.dump(all_items, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, all_items, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved Kommersant data to {output_file}")
 
@@ -237,8 +224,6 @@ def fetch_ved(dates, output_file,
         except Exception as e:
             all_news.append({"error": str(e)})
 
-    #with open(output_file, 'w', encoding='utf-8') as f:
-    #    json.dump(all_news, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, all_news, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved Vedomosti data to {output_file}")
 
@@ -248,13 +233,7 @@ from datetime import date
 
 def fetch_rbc(rubrics, dates, output_file,
               base_url_template="https://www.rbc.ru/{rubric}/?utm_source=topline"):
-    """
-    Собирает новости с разделов RBC, фильтруя по датам из списка dates (datetime.date).
-    Вместо жёстких class="news-feed__title" и т.п. ищем span, в котором в class есть
-    подстрока "news-feed__item__title" (для заголовка) и "news-feed__item__time"
-    или "news-feed__item__date" (для даты).
-    Сохраняет результат [{"title","url","date"}] без дубликатов.
-    """
+
     ru_months = {
         'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4,
         'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8,
@@ -268,7 +247,6 @@ def fetch_rbc(rubrics, dates, output_file,
         print(f"Fetching RBC, {rubric}: {page_url}")
         soup = get_page_soup(page_url)
 
-        # Ищем все <a class="news-feed__item ...">
         anchors = soup.find_all("a", class_="news-feed__item")
 
         for idx, a in enumerate(anchors, start=1):
@@ -278,7 +256,6 @@ def fetch_rbc(rubrics, dates, output_file,
                 class_=lambda c: c and "news-feed__item__title" in c
             )
             if not title_span:
-                # Пропускаем, если внутри нет span с нужной подстрокой в class
                 continue
 
             # Для даты: ищем span, у которого class содержит "news-feed__item__time"
@@ -330,7 +307,7 @@ def fetch_rbc(rubrics, dates, output_file,
                     candidate = datetime.date(year - 1, month, day)
                 news_date = candidate
             else:
-                # если нет названия месяца, значит raw_date = "HH:MM" → сегодняшняя дата
+                # если нет названия месяца, значит raw_date = "HH:MM" сегодняшняя дата
                 news_date = today
 
             if news_date not in dates:
@@ -349,8 +326,6 @@ def fetch_rbc(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    #with open(output_file, "w", encoding="utf-8") as f:
-    #    json.dump(unique, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RBC data to {output_file}")
 
@@ -363,23 +338,20 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
     news_list = []
     seen_links = set()
 
-    # Словарь для преобразования русских месяцев в числа:
     ru_months = {
         "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
         "мая": 5, "июня": 6, "июля": 7, "августа": 8,
         "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12
     }
 
-    # Шаг 1. Находим все теги <time> на странице
     for time_tag in soup.find_all("time"):
         date_text = time_tag.get_text(strip=True).replace("\xa0", " ")
         if not date_text:
             continue
 
-        # Шаг 2. Разбираем "30 мая 2025" → (день, месяц, год)
         parts = date_text.split()
         if len(parts) != 3:
-            continue  # если формат нетипичный, пропускаем
+            continue
 
         day_str, month_str, year_str = parts
         try:
@@ -398,12 +370,9 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
         except Exception:
             continue
 
-        # Шаг 3. Проверяем, входит ли date_obj в список нужных дат
         if date_obj not in dates:
             continue
 
-        # Шаг 4. Ищем связанный <a> перед этим <time> (может быть заголовок и ссылка)
-        # Используем find_previous("a"), но иногда нужно подняться чуть выше
         anchor = time_tag.find_previous("a")
         if not anchor:
             continue
@@ -413,10 +382,8 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
         if not href or not title:
             continue
 
-        # Шаг 5. Формируем полный URL
         url = urljoin(base_url, href.strip())
 
-        # Шаг 6. Проверяем дубли по URL и добавляем в список
         if url in seen_links:
             continue
         seen_links.add(url)
@@ -426,8 +393,6 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
             "link": url
         })
 
-    #with open(output_file, "w", encoding="utf-8") as f:
-    #    json.dump(news_list, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, news_list, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved Agroinvestor data to {output_file}")
@@ -479,8 +444,6 @@ def fetch_rg(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    #with open(output_file, "w", encoding="utf-8") as f:
-    #    json.dump(unique, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RG data to {output_file}")
 
@@ -505,8 +468,6 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
         title = name_meta.get("content", "").strip()
         if not title:
             continue
-
-        # Extract date from the URL path: "/YYYYMMDD/..."
         parsed = urlparse(full_url)
         parts = parsed.path.lstrip("/").split("/")
         if not parts or len(parts[0]) != 8 or not parts[0].isdigit():
@@ -517,14 +478,12 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
         except ValueError:
             continue
 
-        # Filter by provided dates
         if news_date in dates:
             collected.append({
                 "title": title,
                 "url": full_url
             })
 
-    # Remove duplicates by URL
     unique = []
     seen = set()
     for item in collected:
@@ -532,9 +491,6 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
             seen.add(item["url"])
             unique.append(item)
 
-    # Save to JSON
-    #with open(output_file, "w", encoding="utf-8") as f:
-    #    json.dump(unique, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved RIA data to {output_file}")
@@ -619,8 +575,6 @@ def fetch_autostat(dates, output_file,
                 })
                 seen_urls.add(full_url)
 
-    #with open(output_file, "w", encoding="utf-8") as f:
-    #    json.dump(all_collected, f, ensure_ascii=False, indent=2)
     save_to_drive(output_file, all_collected, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved Autostat data to {output_file}")
@@ -630,9 +584,8 @@ def fetch_autostat(dates, output_file,
 #print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # Parameters
-days_before = 4
-#dates = get_last_dates(n_days=0, end_date=date(2025, 6, 2))
-dates = get_last_dates(n_days=days_before)
+#days_before = 4
+dates = get_last_dates(n_days=0, end_date=date(2025, 5, 31))
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
@@ -738,13 +691,13 @@ prompt_list_finish = 'Пришли мне текстовый файл с нум�
 
 section_to_finish_bullets_prompt = {
     "world": [
-        'Пожалуйста, подготовь 3 буллита для раздела по мировой экономике в соответствии с требованиями и пришли итоговый результат в таком формате: сначала буллиты, потом нумерованный список (ни в коем случае ничего в нем не изменяй!).'
+        'Пожалуйста, подготовь 3 буллита для раздела по мировой экономике в соответствии с требованиями и пришли только буллиты и больше никакого текста.'
     ],
     "rus": [
-        'Пожалуйста, подготовь 3 буллита для раздела по россиийской экономике в соответствии с требованиями и пришли итоговый результат в таком формате: сначала буллиты, потом нумерованный список (ни в коем случае ничего в нем не изменяй!).'
+        'Пожалуйста, подготовь 3 буллита для раздела по россиийской экономике в соответствии с требованиями и пришли только буллиты и больше никакого текста.'
     ],
     "prices": [
-        'Пожалуйста, подготовь 3 буллита для раздела по новостям, релевантным для динамики российских цен, в соответствии с требованиями и пришли итоговый результат в таком формате: сначала буллиты, потом нумерованный список (ни в коем случае ничего в нем не изменяй!).'
+        'Пожалуйста, подготовь 3 буллита для раздела по новостям, релевантным для динамики российских цен, в соответствии с требованиями и пришли только буллиты и больше никакого текста.'
     ]
 }
 
@@ -892,12 +845,9 @@ def prioritise(section):
 
 def create_bullets(section):
 
-    MY_FOLDER_ID = "18Lk31SodxZB3qgZm4ElX3BCejQihreVC"
+    MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe"
 
-    if section not in section_to_files:
-        raise ValueError(f"Section '{section}' unknown.")
-
-    list_file = f"{section}_bullets.txt"
+    list_file = f"{section}.txt"
     file_id = find_file_in_drive(list_file)
 
     try:
@@ -929,10 +879,11 @@ def create_bullets(section):
         print(f"Error in model.generate_content: {e}")
         return
 
+    MY_FOLDER_ID = "18Lk31SodxZB3qgZm4ElX3BCejQihreVC"
     file_name = f"report_{section}.txt"
     save_to_drive(file_name, response.text)
 
-if datetime.today().weekday() == 3:
-  create_bullets("world")
-  create_bullets("rus")
-  create_bullets("prices")
+#if datetime.today().weekday() == 3:
+create_bullets("world")
+#  create_bullets("rus")
+#  create_bullets("prices")
