@@ -892,23 +892,17 @@ def design(section):
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe")
 
-design("world")
-time.sleep(60)
-design("rus")
-time.sleep(60)
-design("prices")
+#design("world")
+#time.sleep(60)
+#design("rus")
+#time.sleep(60)
+#design("prices")
 
 def create_bullets(section):
 
-    MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe"
-
-    list_file = f"{section}.txt"
-    file_id = find_file_in_drive(list_file)
-
-    try:
-        list_content = download_text_file(file_id)
-    except Exception as e:
-        print("Ошибка при скачивании файла:", e)
+    list_file = f"{section}.json"
+    file_id = find_file_in_drive(list_file, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    list_content = download_text_file(file_id)
 
     # Берём соответствующий prompt для завершения
     prompt_bullets_finish = section_to_finish_bullets_prompt[section]
@@ -939,5 +933,7 @@ def create_bullets(section):
 
 if datetime.today().weekday() == 3:
   create_bullets("world")
+  time.sleep(60)
   create_bullets("rus")
+  time.sleep(60)
   create_bullets("prices")
