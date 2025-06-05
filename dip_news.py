@@ -597,15 +597,15 @@ rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabot
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-#fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
-#fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-#fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
-#fetch_ved(dates_ved, "ved.json")
-#fetch_rbc(rubrics_rbc, dates, "rbc.json")
-#fetch_agro(dates, "agro.json")
-#fetch_rg(rubrics_rg, dates, "rg.json")
-#fetch_ria(dates, "ria.json")
-#fetch_autostat(dates, "autostat.json", rubrics_auto)
+fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
+fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
+fetch_ved(dates_ved, "ved.json")
+fetch_rbc(rubrics_rbc, dates, "rbc.json")
+fetch_agro(dates, "agro.json")
+fetch_rg(rubrics_rg, dates, "rg.json")
+fetch_ria(dates, "ria.json")
+fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -855,11 +855,11 @@ def create_news_lists(section):
     save_to_drive(output_file, combined_items, my_folder = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
-#create_news_lists("world")
-#time.sleep(60)
-#create_news_lists("rus")
-#time.sleep(60)
-#create_news_lists("prices")
+create_news_lists("world")
+time.sleep(60)
+create_news_lists("rus")
+time.sleep(60)
+create_news_lists("prices")
 
 def design(section):
 
@@ -892,11 +892,11 @@ def design(section):
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe")
 
-#design("world")
-#time.sleep(60)
-#design("rus")
-#time.sleep(60)
-#design("prices")
+design("world")
+time.sleep(60)
+design("rus")
+time.sleep(60)
+design("prices")
 
 def create_bullets(section):
 
