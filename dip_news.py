@@ -690,7 +690,17 @@ section_to_continue_prompt = {
 
 prompt_list_finish = 'Пришли мне JSON файл, включающий только новости, СТРОГО соответствующие требованиям. В json включай только название новости ("title") и URL ("url"). ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ JSON ФАЙЛА, НИКАКИХ ПОЯСНЕНИЙ.'
 
-prompt_design = 'Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
+section_to_prompt_design = {
+    "world": [
+        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них НЕ БОЛЕЕ 40, НАИБОЛЕЕ СТРОГО соответствующих критериям для включения в нумерованный список для раздела по мировой экономике. Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
+    ],
+    "rus": [
+        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них НЕ БОЛЕЕ 40, НАИБОЛЕЕ СТРОГО соответствующих критериям для включения в нумерованный список для раздела по россиийской экономике. Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
+    ],
+    "prices": [
+        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них НЕ БОЛЕЕ 40, НАИБОЛЕЕ СТРОГО соответствующих критериям для включения в нумерованный список для раздела по новостям, релевантным для динамики российских цен. Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
+    ]
+}
 
 section_to_finish_bullets_prompt = {
     "world": [
@@ -708,20 +718,56 @@ prompt_prioritise = 'Пожалуйста, оставь в разделе не �
 
 example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n'
 
-import os
-import json
-from datetime import datetime
+def extract_json(text: str):
+    """
+    Пытается найти в строке `text` JSON-список или JSON-объект и вернуть его как Python-структуру.
+    Сначала ищет JSON-массив [...], если не находит — JSON-объект {...}.
+    Если подходящего фрагмента нет или он невалиден — возвращает None.
+    """
+    # 1) Пытаемся найти JSON-массив: ищем первую '[' и последнюю ']'
+    start = text.find('[')
+    end = text.rfind(']')
+    if 0 <= start < end:
+        candidate = text[start:end+1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    # 2) Если не найден массив, пробуем найти JSON-объект: первую '{' и последнюю '}'
+    start = text.find('{')
+    end = text.rfind('}')
+    if 0 <= start < end:
+        candidate = text[start:end+1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    # 3) Если ни то, ни другое не получилось — отдадим None
+    return None
 
 def create_news_lists(section):
-    if section not in section_to_files:
-        raise ValueError(f"Section '{section}' unknown.")
 
-    # Собираем все новости в один список
-    combined_items = []
-    seen_urls = set()
+    # Если сегодня не суббота, пробуем прочитать существующий файл <section>.json
+    if datetime.today().weekday() != 5:  # 5 = Saturday
+        try:
+            existing_id = find_file_in_drive(f"{section}.json", "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+            existing_text = download_text_file(existing_id)
+            try:
+                combined_items = json.loads(existing_text)
+            except json.JSONDecodeError:
+                combined_items = []
+        except Exception:
+            combined_items = []
+    else:
+        combined_items = []
 
-    # Список JSON-файлов по section
+    seen_urls = {item["url"] for item in combined_items if isinstance(item, dict) and "url" in item}
+
+    # Достаём список JSON-файлов и prompt_list_continue
     json_files = section_to_files[section]
+    prompt_list_continue = section_to_continue_prompt[section]
 
     for json_filename in json_files:
         base_name, ext = os.path.splitext(json_filename)
@@ -729,7 +775,6 @@ def create_news_lists(section):
             print(f"Пропускаем '{json_filename}', т.к. не .json-файл.")
             continue
 
-        # Скачиваем содержимое JSON из заранее известной папки на Drive
         try:
             file_id = find_file_in_drive(json_filename, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
             raw_text = download_text_file(file_id)
@@ -740,7 +785,7 @@ def create_news_lists(section):
             print(f"Ошибка при скачивании '{json_filename}': {e}. Пропускаем.")
             continue
 
-        if not raw_text or not raw_text.strip():
+        if not isinstance(raw_text, str) or not raw_text.strip():
             print(f"JSON '{json_filename}' пустой. Пропускаем.")
             continue
 
@@ -750,33 +795,53 @@ def create_news_lists(section):
             print(f"Ошибка JSON в '{json_filename}': {e}. Пропускаем.")
             continue
 
-        # news_data может быть списком или словарём; приводим к списку записей
-        items = []
-        if isinstance(news_data, list):
-            items = news_data
-        elif isinstance(news_data, dict):
-            # Если корневой объект – словарь, пробуем найти в нём ключи с списком новостей
-            # (например, "articles", "news", "items" и т.п.). Если такого нет, считаем
-            # весь словарь одной записью.
-            for key in ("items", "news", "articles"):
-                if key in news_data and isinstance(news_data[key], list):
-                    items = news_data[key]
-                    break
-            else:
-                items = [news_data]
-        else:
-            print(f"Неподдерживаемый формат JSON в '{json_filename}'. Пропускаем.")
+        if isinstance(news_data, (list, dict)) and len(news_data) == 0:
+            print(f"JSON '{json_filename}' содержит пустую структуру. Пропускаем.")
             continue
 
-        # Из каждого элемента оставляем только title и url (если они есть)
+        news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
+
+        raw_parts = [
+            news_json_string,
+            prompt_list_start,
+            prompt_list_continue,
+            prompt_list_finish
+        ]
+
+        prompt_parts = []
+        for part in raw_parts:
+            if isinstance(part, list):
+                prompt_parts.append("\n".join(part))
+            else:
+                prompt_parts.append(str(part))
+
+        try:
+            response = model_obj.generate_content(prompt_parts)
+        except Exception as e:
+            print(f"Error in model.generate_content for '{json_filename}': {e}.")
+            continue
+
+        raw_reply = response.text
+
+        # Попытка вычленить JSON-список (или объект) из текста модели:
+        items = extract_json(raw_reply)
+        if items is None:
+            print(f"Ответ модели для '{json_filename}' не содержит валидный JSON:\n{raw_reply[:200]}… Пропускаем.")
+            continue
+
+        # Если получили одиночный объект (dict), обернём в список:
+        if isinstance(items, dict):
+            items = [items]
+
+        if not isinstance(items, list):
+            print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
+            continue
+
+        # Дальше идёт проверка каждого entry в items: title, url и т.д.
         for entry in items:
-            if not isinstance(entry, dict):
-                continue
-            title = entry.get("title") or entry.get("name") or entry.get("headline")
-            url = entry.get("url") or entry.get("link")
-            if not title or not url:
-                continue
-            if url in seen_urls:
+            url = entry.get("url")
+            title = entry.get("title")
+            if not title or not url or url in seen_urls:
                 continue
             seen_urls.add(url)
             combined_items.append({"title": title, "url": url})
@@ -785,9 +850,9 @@ def create_news_lists(section):
         print(f"For section '{section}', zero JSONs were successfully processed.")
         return
 
-    # Сохраняем итоговый список в единый JSON-файл
+    # Сохраняем объединённый JSON в файл <section>.json
     output_file = f"{section}.json"
-    save_to_drive(output_file, combined_items my_folder = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    save_to_drive(output_file, combined_items, my_folder = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 create_news_lists("world")
