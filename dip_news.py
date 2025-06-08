@@ -57,6 +57,39 @@ API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска 
 genai.configure(api_key=API_KEY)
 model_obj = genai.GenerativeModel('gemini-1.5-flash')
 
+### TG Schedule bot
+
+def telegram_lists():
+    url = "https://api.telegram.org/bot6245425859:AAEHTh0EX9aE6qPhvHoclFPa3a8IBVRNeSM/sendMessage"
+    payload = {
+        "chat_id": "-4265314101",
+        "text": "Новостная записка обновлена. См. отчёты по <a href=\"https://clck.ru/3MTaGo\">ссылке</a>",
+        "parse_mode": "HTML"
+    }
+
+    try:
+        response = requests.post(url, data=payload)
+        response.raise_for_status()
+        print("Telegram message sent.")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send Telegram message: {e}")
+
+def telegram_bullets():
+    url = "https://api.telegram.org/bot6245425859:AAEHTh0EX9aE6qPhvHoclFPa3a8IBVRNeSM/sendMessage"
+    payload = {
+        "chat_id": "-4265314101",
+        "text": "Готовы буллиты к новостной записке. См. отчёты по <a href=\"https://clck.ru/3MTbwx\">ссылке</a>",
+        "parse_mode": "HTML"
+    }
+
+    try:
+        response = requests.post(url, data=payload)
+        response.raise_for_status()
+        print("Bullet message sent.")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send bullet message: {e}")
+
+
 ### Functions for google drive
 
 def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
@@ -897,6 +930,7 @@ time.sleep(60)
 design("rus")
 time.sleep(60)
 design("prices")
+telegram_lists()
 
 def create_bullets(section):
 
@@ -937,3 +971,4 @@ if datetime.today().weekday() == 3:
   create_bullets("rus")
   time.sleep(60)
   create_bullets("prices")
+  telegram_bullets()  
