@@ -121,14 +121,22 @@ def download_text_file(fid: str) -> str:
         status, done = downloader.next_chunk()
     return fh.getvalue().decode("utf-8")
 
-def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
+def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str = "json"):
+    """
+    Сохраняет файл на Google Drive. Поддерживаются форматы: 'json' (по умолчанию) и 'txt'.
 
-    if isinstance(data, str):
-        # save as plain text
-        content_bytes = data.encode("utf-8")
+    :param file_name: Имя файла.
+    :param data: Данные для записи (dict или str).
+    :param my_folder: ID папки в Google Drive.
+    :param file_format: Формат файла: 'json' или 'txt'.
+    """
+    if file_format not in ("json", "txt"):
+        raise ValueError("file_format должен быть 'json' или 'txt'")
+
+    if file_format == "txt":
+        content_bytes = data.encode("utf-8") if isinstance(data, str) else str(data).encode("utf-8")
         mime_type = "text/plain"
     else:
-        # as JSON
         json_str = json.dumps(data, ensure_ascii=False, indent=2)
         content_bytes = json_str.encode("utf-8")
         mime_type = "application/json"
@@ -145,13 +153,12 @@ def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
         if items:
             existing_file_id = items[0]["id"]
     except Exception as e:
-        print("Warning: can't check, if the file already exists:", e)
+        print("Warning: can't check if the file already exists:", e)
 
     fh = io.BytesIO(content_bytes)
     media = MediaIoBaseUpload(fh, mimetype=mime_type, resumable=False)
 
     if existing_file_id:
-        # then rewrite
         try:
             updated = drive_service.files().update(
                 fileId=existing_file_id,
@@ -163,7 +170,6 @@ def save_to_drive(file_name: str, data, my_folder = MY_FOLDER_ID):
             print(f"Error updating file '{file_name}': {e}")
             raise
     else:
-        # then create
         file_metadata = {
             "name": file_name,
             "parents": [my_folder],
@@ -939,7 +945,7 @@ def design(section):
         print(f"Error in model.generate_content for '{json_filename}': {e}.")
 
     # Записываем итог в тот же файл <section>.txt на Google Drive
-    save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe")
+    save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
 
 design("world")
 time.sleep(60)
