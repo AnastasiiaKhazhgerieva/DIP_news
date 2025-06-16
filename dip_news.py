@@ -652,12 +652,6 @@ rubrics_rbc = ["economics", "business", "finances"]
 rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
 rubrics_auto = [21, 8, 13, 70, 71]
 
-dates
-
-fetch_agro(dates, "agro.json")
-
-
-
 # Fetching
 fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
 fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
