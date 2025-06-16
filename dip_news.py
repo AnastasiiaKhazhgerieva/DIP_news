@@ -416,7 +416,8 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
 
         month = ru_months[month_str]
         try:
-            date_obj = datetime.date(year, month, day)
+            date_obj = date(year, month, day)
+
         except Exception as e:
             print(f"⚠️ Failed to construct date object: {e}")
             continue
@@ -650,6 +651,12 @@ rubrics_kom_prices = [41]
 rubrics_rbc = ["economics", "business", "finances"]
 rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
 rubrics_auto = [21, 8, 13, 70, 71]
+
+dates
+
+fetch_agro(dates, "agro.json")
+
+
 
 # Fetching
 fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
