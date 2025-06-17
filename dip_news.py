@@ -658,7 +658,7 @@ fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
 fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
 fetch_ved(dates_ved, "ved.json")
 fetch_rbc(rubrics_rbc, dates, "rbc.json")
-fetch_agro(dates, "agro.json")
+#fetch_agro(dates, "agro.json")
 fetch_rg(rubrics_rg, dates, "rg.json")
 fetch_ria(dates, "ria.json")
 fetch_autostat(dates, "autostat.json", rubrics_auto)
@@ -670,7 +670,7 @@ section_to_files = {
         "kom_rus.json",
         "ved.json",
         "rbc.json",
-        "agro.json",
+        #"agro.json",
         "rg.json",
         "ria.json"
     ],
@@ -678,7 +678,7 @@ section_to_files = {
         "kom_rus.json",
         "ved.json",
         "rbc.json",
-        "agro.json",
+        #"agro.json",
         "rg.json",
         "ria.json"
     ],
@@ -687,7 +687,7 @@ section_to_files = {
         "kom_rus.json",
         "ved.json",
         "rbc.json",
-        "agro.json",
+        #"agro.json",
         "rg.json",
         "ria.json",
         "autostat.json"
