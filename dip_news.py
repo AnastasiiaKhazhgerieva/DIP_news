@@ -673,7 +673,7 @@ section_to_files = {
         "kom_rus.json",
         "ved.json",
         "rbc.json",
-        #"agro.json",
+        "agro.json",
         "rg.json",
         "ria.json"
     ],
@@ -681,7 +681,7 @@ section_to_files = {
         "kom_rus.json",
         "ved.json",
         "rbc.json",
-        #"agro.json",
+        "agro.json",
         "rg.json",
         "ria.json"
     ],
@@ -690,7 +690,7 @@ section_to_files = {
         "kom_rus.json",
         "ved.json",
         "rbc.json",
-        #"agro.json",
+        "agro.json",
         "rg.json",
         "ria.json",
         "autostat.json"
