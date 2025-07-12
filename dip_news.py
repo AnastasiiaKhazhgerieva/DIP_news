@@ -122,14 +122,6 @@ def download_text_file(fid: str) -> str:
     return fh.getvalue().decode("utf-8")
 
 def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str = "json"):
-    """
-    Сохраняет файл на Google Drive. Поддерживаются форматы: 'json' (по умолчанию) и 'txt'.
-
-    :param file_name: Имя файла.
-    :param data: Данные для записи (dict или str).
-    :param my_folder: ID папки в Google Drive.
-    :param file_format: Формат файла: 'json' или 'txt'.
-    """
     if file_format not in ("json", "txt"):
         raise ValueError("file_format должен быть 'json' или 'txt'")
 
@@ -141,6 +133,7 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
         content_bytes = json_str.encode("utf-8")
         mime_type = "application/json"
 
+    # Ищем, существует ли уже файл
     existing_file_id = None
     try:
         resp = drive_service.files().list(
@@ -160,32 +153,43 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
 
     if existing_file_id:
         try:
+            # Пытаемся обновить
             updated = drive_service.files().update(
                 fileId=existing_file_id,
                 media_body=media
             ).execute()
             print(f"File '{file_name}' updated (ID={updated['id']}).")
             return updated
-        except Exception as e:
-            print(f"Error updating file '{file_name}': {e}")
-            raise
-    else:
-        file_metadata = {
-            "name": file_name,
-            "parents": [my_folder],
-            "mimeType": mime_type
-        }
-        try:
-            created = drive_service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields="id, webViewLink"
-            ).execute()
-            print(f"New file created: '{file_name}', (ID={created['id']}).")
-            return created
-        except Exception as e:
-            print(f"Error creating a new file '{file_name}': {e}")
-            raise
+        except HttpError as e:
+            if e.resp.status == 403 and "storageQuotaExceeded" in str(e):
+                print(f"⚠️ Quota error on update — deleting and recreating file '{file_name}'...")
+                try:
+                    drive_service.files().delete(fileId=existing_file_id).execute()
+                    existing_file_id = None  # перейти к созданию
+                except Exception as del_err:
+                    print(f"Ошибка при удалении файла '{file_name}': {del_err}")
+                    raise
+            else:
+                print(f"Ошибка при обновлении файла '{file_name}': {e}")
+                raise
+
+    # Создание нового файла
+    file_metadata = {
+        "name": file_name,
+        "parents": [my_folder],
+        "mimeType": mime_type
+    }
+    try:
+        created = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, webViewLink"
+        ).execute()
+        print(f"New file created: '{file_name}', (ID={created['id']}).")
+        return created
+    except Exception as e:
+        print(f"Ошибка при создании нового файла '{file_name}': {e}")
+        raise
 
 ### Functions for scrapping
 
