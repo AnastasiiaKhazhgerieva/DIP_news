@@ -28,6 +28,9 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
+      - name: Restore token.pickle from GitHub Secret
+        run: echo "${{ secrets.TOKEN_PICKLE_B64 }}" | base64 -d > token.pickle
+
       - name: Run dip_news.py
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
