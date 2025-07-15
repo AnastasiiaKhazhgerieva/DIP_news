@@ -28,8 +28,8 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
-      - name: Run dip_news.py
+       - name: Run dip_news.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TOKEN_PICKLE_B64: ${{ secrets.TOKEN_PICKLE_B64 }}
+          GOOGLE_TOKEN_B64: ${{ secrets.GOOGLE_TOKEN_B64 }}
         run: python dip_news.py
