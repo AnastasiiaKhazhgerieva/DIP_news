@@ -17,6 +17,7 @@ import os
 import pandas as pd
 import google.generativeai as genai
 import io
+import base64
 try: # google colab не запускается, когда раним через workflow, он там есть по умолчанию, поэтому имени в PyPL такого нет
     from google.colab import userdata, drive
 except ImportError:
@@ -26,27 +27,26 @@ from datetime import date, timedelta, datetime
 from typing import List
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 # Auxilliary
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-# service account credentials (to access google drive)
-sa_json = os.environ.get("GCP_SA_KEY") # строка для запуска через workflow
-#with open("hybrid-sunbeam-461621-s8-9191b51ccff5.json", 'r', encoding='utf-8') as f: # для локального запуска
-#   sa_json = f.read()  # для локального запуска
-if not sa_json:
-    raise RuntimeError("Сервисный аккаунт не найден")
+encoded_token = os.environ.get("TOKEN_PICKLE_B64")
+if not encoded_token:
+    raise RuntimeError("OAuth токен не найден. Убедитесь, что переменная окружения TOKEN_PICKLE_B64 задана.")
 
-creds_info = json.loads(sa_json)
+token_bytes = base64.b64decode(encoded_token)
+creds = Credentials.from_authorized_user_info(json.loads(token_bytes.decode("utf-8")),
+                                              scopes=["https://www.googleapis.com/auth/drive"])
 
-creds = Credentials.from_service_account_info(
-    creds_info,
-    scopes=["https://www.googleapis.com/auth/drive"]
-)
+if creds.expired and creds.refresh_token:
+    creds.refresh(Request())
+
 drive_service = build("drive", "v3", credentials=creds)
 
 MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на google drive
