@@ -49,6 +49,19 @@ if creds.expired and creds.refresh_token:
 
 drive_service = build("drive", "v3", credentials=creds)
 
+print("✅ Credentials info:")
+print("  - token:", creds.token[:20] + "...")
+print("  - refresh_token:", bool(creds.refresh_token))
+print("  - client_id:", creds.client_id)
+print("  - quota_project_id:", creds.quota_project_id)
+print("  - valid:", creds.valid)
+print("  - expired:", creds.expired)
+print("  - scopes:", creds.scopes)
+# Кто залогинен?
+about = drive_service.about().get(fields="user").execute()
+print("✅ Авторизация от имени:", about["user"]["displayName"], about["user"]["emailAddress"])
+
+
 MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на google drive
 
 # gemini api key
