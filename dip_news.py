@@ -36,9 +36,9 @@ from google.oauth2.credentials import Credentials
 # Auxilliary
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-encoded_token = os.environ.get("TOKEN_PICKLE_B64")
+encoded_token = os.environ.get("GOOGLE_TOKEN_B64")
 if not encoded_token:
-    raise RuntimeError("OAuth токен не найден. Убедитесь, что переменная окружения TOKEN_PICKLE_B64 задана.")
+    raise RuntimeError("OAuth токен не найден. Убедитесь, что переменная окружения GOOGLE_TOKEN_B64 задана.")
 
 token_bytes = base64.b64decode(encoded_token)
 creds = Credentials.from_authorized_user_info(json.loads(token_bytes.decode("utf-8")),
