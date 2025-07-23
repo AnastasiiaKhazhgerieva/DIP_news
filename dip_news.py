@@ -41,12 +41,13 @@ if not encoded_token:
     raise RuntimeError("OAuth токен не найден. Убедитесь, что переменная окружения GOOGLE_TOKEN_B64 задана.")
 
 token_bytes = base64.b64decode(encoded_token)
-creds = Credentials.from_authorized_user_info(json.loads(token_bytes.decode("utf-8")),
-                                              scopes=["https://www.googleapis.com/auth/drive"])
+token_info = json.loads(token_bytes.decode("utf-8"))
+
+creds = Credentials.from_authorized_user_info(token_info, scopes=["https://www.googleapis.com/auth/drive"])
 
 if creds.expired and creds.refresh_token:
     creds.refresh(Request())
-
+    
 drive_service = build("drive", "v3", credentials=creds)
 
 print("✅ Credentials info:")
