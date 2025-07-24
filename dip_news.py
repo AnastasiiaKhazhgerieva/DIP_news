@@ -1009,10 +1009,10 @@ def create_bullets(section):
     file_name = f"report_{section}.txt"
     save_to_drive(file_name, response.text, my_folder = "18Lk31SodxZB3qgZm4ElX3BCejQihreVC")
 
-#if datetime.today().weekday() == 3:
+if datetime.today().weekday() == 3:
   create_bullets("world")
 #  time.sleep(60)
 #  create_bullets("rus")
 #  time.sleep(60)
-  create_bullets("prices")
+#  create_bullets("prices")
   telegram_bullets()
