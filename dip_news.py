@@ -933,10 +933,10 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
+#time.sleep(60)
+#create_news_lists("rus")
+#time.sleep(60)
+#create_news_lists("prices")
 
 def design(section):
 
@@ -970,11 +970,11 @@ def design(section):
     save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
 
 design("world")
-time.sleep(60)
-design("rus")
-time.sleep(60)
-design("prices")
-telegram_lists()
+#time.sleep(60)
+#design("rus")
+#time.sleep(60)
+#design("prices")
+#telegram_lists()
 
 def create_bullets(section):
 
@@ -1009,10 +1009,10 @@ def create_bullets(section):
     file_name = f"report_{section}.txt"
     save_to_drive(file_name, response.text, my_folder = "18Lk31SodxZB3qgZm4ElX3BCejQihreVC")
 
-if datetime.today().weekday() == 3:
+#if datetime.today().weekday() == 3:
   create_bullets("world")
-  time.sleep(60)
-  create_bullets("rus")
-  time.sleep(60)
+#  time.sleep(60)
+#  create_bullets("rus")
+#  time.sleep(60)
   create_bullets("prices")
   telegram_bullets()
