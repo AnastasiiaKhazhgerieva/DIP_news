@@ -692,8 +692,8 @@ section_to_files = {
         "ved.json",
         "rbc.json",
         "agro.json",
-        "rg.json"
-        #"ria.json"
+        #"rg.json",
+        "ria.json"
     ],
     "rus": [
         "kom_rus.json",
@@ -709,8 +709,8 @@ section_to_files = {
         "ved.json",
         "rbc.json",
         "agro.json",
-        "rg.json",
-        #"ria.json",
+        #"rg.json",
+        "ria.json",
         "autostat.json"
     ]
 }
