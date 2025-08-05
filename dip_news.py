@@ -934,9 +934,9 @@ def create_news_lists(section):
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 create_news_lists("world")
 time.sleep(60)
-create_news_lists("rus")
+#create_news_lists("rus")
 time.sleep(60)
-create_news_lists("prices")
+#create_news_lists("prices")
 
 def design(section):
 
@@ -971,10 +971,10 @@ def design(section):
 
 design("world")
 time.sleep(60)
-design("rus")
-time.sleep(60)
-design("prices")
-telegram_lists()
+#design("rus")
+#time.sleep(60)
+#design("prices")
+#telegram_lists()
 
 def create_bullets(section):
 
