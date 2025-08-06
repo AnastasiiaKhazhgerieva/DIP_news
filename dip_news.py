@@ -719,79 +719,90 @@ section_to_files = {
 
 ### Prompts
 
-#file_path = '/content/drive/MyDrive/news lists, prompt beginning.txt'
-
-file_id = find_file_in_drive("news lists, prompt beginning.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
-
+###
+### news lists
+file_id = find_file_in_drive("lists_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
-    prompt_list_start = download_text_file(file_id)
+    lists_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
-    prompt_list_start = ""
+    lists_world = ""
 
-#try:
-#    with open(file_path, 'r', encoding='utf-8') as f:
-#        propmt_list_start = f.read()
-#except FileNotFoundError:
-#    print(f"Error: no file found (path: {file_path})")
-#except Exception as e:
-#    print(f"Error while reading file: {e}")
-
-file_id = find_file_in_drive("bullets, prompt beginning.txt","1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
-
+file_id = find_file_in_drive("lists_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
-    prompt_bullets_start = download_text_file(file_id)
+    lists_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
-    prompt_bullets_start = ""
+    lists_rus = ""
 
-#try:
-#    with open(file_path, 'r', encoding='utf-8') as f:
-#        prompt_bullets_start = f.read()
-#except FileNotFoundError:
-#    print(f"Error: no file found (path: {file_path})")
-#except Exception as e:
-#    print(f"Error while reading file: {e}")
+file_id = find_file_in_drive("lists_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    lists_prices = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    lists_prices = ""
 
-section_to_continue_prompt = {
-    "world": [
-        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них не больше 50 таких, которые СТРОГО соответствуют критериям и могут быть включены в нумерованный список для раздела по мировой экономике.'
-    ],
-    "rus": [
-        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них не больше 50 таких, которые СТРОГО соответствуют критериям и могут быть включены в нумерованный список для раздела по россиийской экономике.'
-    ],
-    "prices": [
-        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и отбери из них не больше 50 таких, которые СТРОГО соответствуют критериям и могут быть включены в нумерованный список для раздела по новостям, релевантным для динамики российских цен. ВАЖНО: новости из файлов agro.json и autostat.json ПОЧТИ НАВЕРНЯКА ПОДХОДЯТ и должны остаться в разделе, а новости из файла ria.json ВРЯД ЛИ ПОДХОДЯТ.'
-    ]
+lists_prompts = {
+        "world": lists_world,
+        "rus": lists_rus,
+        "prices": lists_prices
 }
 
-prompt_list_finish = 'Пришли мне JSON файл, включающий только новости, СТРОГО соответствующие требованиям. В json включай только название новости ("title") и URL ("url"). ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ JSON ФАЙЛА, НИКАКИХ ПОЯСНЕНИЙ.'
+### design
+file_id = find_file_in_drive("design_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    design_world = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    design_world = ""
 
-section_to_prompt_design = {
-    "world": [
-        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и проверь еще раз выполнение критерия A7: новость обязательно должна быть уникальна и по URL, и по существу описываемого события. Оставь в итоговом списке НЕ БОЛЕЕ 40, НАИБОЛЕЕ СТРОГО соответствующих критериям для включения в нумерованный список для раздела по мировой экономике. Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
-    ],
-    "rus": [
-        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и проверь еще раз выполнение критерия A7: новость обязательно должна быть уникальна и по URL, и по существу описываемого события. Оставь в итоговом списке НЕ БОЛЕЕ 40, НАИБОЛЕЕ СТРОГО соответствующих критериям для включения в нумерованный список для раздела по российской экономике. Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
-    ],
-    "prices": [
-        'Пожалуйста, просмотри АБСОЛЮТНО ВСЕ НОВОСТИ в приложенном файле и проверь еще раз выполнение критерия A7: новость обязательно должна быть уникальна и по URL, и по существу описываемого события. Оставь в итоговом списке НЕ БОЛЕЕ 40, НАИБОЛЕЕ СТРОГО соответствующих критериям для включения в нумерованный список для раздела по новостям, релевантным для динамики российских цен. Особое внимание новостям из файлов agro.json и autostat.json, они с высокой вероятностью должны остаться в разделе. Пришли мне текстовый файл с нумерованным списком новостей, СТРОГО соответствующих требованиям. Оформи нумерованный список так: новость, ниже ее URL, прикладываю пример оформления. ОЧЕНЬ ВАЖНО: В ОТВЕТ НЕ ПРИСЫЛАЙ НИЧЕГО КРОМЕ ТЕКСТОВОГО ФАЙЛА.'
-    ]
+file_id = find_file_in_drive("design_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    design_rus = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    design_rus = ""
+
+file_id = find_file_in_drive("design_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    design_prices = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    design_prices = ""
+
+design_prompts = {
+        "world": design_world,
+        "rus": design_rus,
+        "prices": design_prices
 }
 
-section_to_finish_bullets_prompt = {
-    "world": [
-        'Пожалуйста, подготовь 3 буллита для раздела по мировой экономике в соответствии с требованиями и пришли только буллиты и больше никакого текста.'
-    ],
-    "rus": [
-        'Пожалуйста, подготовь 3 буллита для раздела по россиийской экономике в соответствии с требованиями и пришли только буллиты и больше никакого текста.'
-    ],
-    "prices": [
-        'Пожалуйста, подготовь 3 буллита для раздела по новостям, релевантным для динамики российских цен, в соответствии с требованиями и пришли только буллиты и больше никакого текста.'
-    ]
-}
+### bullets
+file_id = find_file_in_drive("bullets_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    bullets_world = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    bullets_world = ""
 
-prompt_prioritise = 'Пожалуйста, оставь в разделе не более 30 наиболее новостей, в наибольшей степени подходящих под критерии. Пришли итоговый результат текстом в виде списка. НИКАК НЕ ИЗМЕНЯЙ ССЫЛКИ ИЛИ НАЗВАНИЯ НОВОСТЕЙ.'
+file_id = find_file_in_drive("bullets_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    bullets_rus = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    bullets_rus = ""
+
+file_id = find_file_in_drive("bullets_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    bullets_prices = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    bullets_prices = ""
+
+bullets_prompts = {
+        "world": bullets_world,
+        "rus": bullets_rus,
+        "prices": bullets_prices
+}
 
 example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n'
 
@@ -842,9 +853,9 @@ def create_news_lists(section):
 
     seen_urls = {item["url"] for item in combined_items if isinstance(item, dict) and "url" in item}
 
-    # Достаём список JSON-файлов и prompt_list_continue
+    # Достаём список JSON-файлов и prompt
     json_files = section_to_files[section]
-    prompt_list_continue = section_to_continue_prompt[section]
+    prompt_list = lists_prompts.get(section, "")    
 
     for json_filename in json_files:
         base_name, ext = os.path.splitext(json_filename)
@@ -879,10 +890,8 @@ def create_news_lists(section):
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
 
         raw_parts = [
-            news_json_string,
-            prompt_list_start,
-            prompt_list_continue,
-            prompt_list_finish
+            prompt_list,
+            news_json_string
         ]
 
         prompt_parts = []
@@ -944,13 +953,12 @@ def design(section):
     file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
     news_list = download_text_file(file_id)
 
-    prompt_design_finish = section_to_prompt_design[section]
+    prompt_design = design_prompts.get(section, "")    
 
     raw_parts = [
-        news_list,
-        prompt_list_start,
-        prompt_design_finish,
-        example
+        prompt_design,
+        example,
+        news_list
     ]
 
     prompt_parts = []
@@ -964,7 +972,7 @@ def design(section):
     try:
         response = model_obj.generate_content(prompt_parts)
     except Exception as e:
-        print(f"Error in model.generate_content for '{json_filename}': {e}.")
+        print(f"Error in model.generate_content for '{file_name}': {e}.")
 
     # Записываем итог в тот же файл <section>.txt на Google Drive
     save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
@@ -982,13 +990,12 @@ def create_bullets(section):
     file_id = find_file_in_drive(list_file, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
     list_content = download_text_file(file_id)
 
-    # Берём соответствующий prompt для завершения
-    prompt_bullets_finish = section_to_finish_bullets_prompt[section]
+    # Берём соответствующий prompt
+    prompt_bullets = bullets_prompts.get(section, "")  
 
     # Формируем prompt_parts
     raw_parts = [
-        prompt_bullets_start,
-        prompt_bullets_finish,
+        prompt_bullets,
         list_content
     ]
 
