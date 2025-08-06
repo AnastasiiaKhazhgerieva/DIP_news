@@ -785,6 +785,34 @@ except Exception as e:
     print("Ошибка при скачивании файла:", e)
     prompt_design = ""
 
+### top
+file_id = find_file_in_drive("top_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    top_world = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    top_world = ""
+
+file_id = find_file_in_drive("top_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    top_rus = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    top_rus = ""
+
+file_id = find_file_in_drive(top_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    top_prices = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    top_prices = ""
+
+top_prompts = {
+        "world": top_world,
+        "rus": top_rus,
+        "prices": top_prices
+}
+
 ### bullets
 file_id = find_file_in_drive("bullets_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
@@ -1038,37 +1066,118 @@ time.sleep(60)
 design("prices")
 telegram_lists()
 
-def create_bullets(section):
+def read_top_urls(section, max_chars=1500):
+    import requests
+    from bs4 import BeautifulSoup
 
+    def extract_main_text(soup, max_chars=1500, min_paragraph_len=50, max_paragraphs=5):
+        paragraphs = []
+        for p in soup.find_all('p'):
+            text = p.get_text(" ", strip=True)
+            if len(text) < min_paragraph_len:
+                continue
+            low = text.lower()
+            if any(word in low for word in ["cookie", "subscribe", "advert", "реклама", "подпишитесь"]):
+                continue
+            paragraphs.append(text)
+            if len(paragraphs) >= max_paragraphs:
+                break
+
+        combined_text = " ".join(paragraphs)
+        if len(combined_text) > max_chars:
+            combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
+        return combined_text
+
+    # Загружаем JSON с новостями после prioritise
+    file_name = f"{section}.json"
+    file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    news_list = download_text_file(file_id)
+
+    # Получаем промпт
+    prompt_top = top_prompts.get(section, "")
+    raw_parts = [prompt_top, news_list]
+
+    # Генерация топ ссылок
+    try:
+        response = model_obj.generate_content(raw_parts)
+        top_links_json = json.loads(response.text)
+    except Exception as e:
+        print(f"Ошибка генерации топ ссылок для {section}: {e}")
+        return
+
+    # Скачиваем и очищаем страницы
+    results = []
+    for item in top_links_json:
+        url = item.get("url") or item.get("URL")
+        title = item.get("title", "")
+        if not url:
+            continue
+        try:
+            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            soup = BeautifulSoup(resp.text, "html.parser")
+            page_text = extract_main_text(soup, max_chars=max_chars)
+            results.append({
+                "url": url,
+                "title": title,
+                "text": page_text
+            })
+        except Exception as e:
+            print(f"Ошибка при обработке {url}: {e}")
+
+    # Сохраняем JSON с текстами в другую папку
+    save_to_drive(
+        file_name,
+        results,
+        my_folder="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V",
+        file_format="json"
+    )
+    print(f"{section}: сохранено {len(results)} ссылок с текстами.")
+
+if datetime.today().weekday() == 3:
+read_top_urls("world")
+time.sleep(60)
+read_top_urls("rus")
+time.sleep(60)
+read_top_urls("prices")
+
+def create_bullets(section):
+    # Загружаем JSON с текстами топ-новостей
     list_file = f"{section}.json"
-    file_id = find_file_in_drive(list_file, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    file_id = find_file_in_drive(list_file, "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V")
     list_content = download_text_file(file_id)
 
+    # Если пришёл JSON-строкой, делаем красиво
+    try:
+        parsed_json = json.loads(list_content)
+        pretty_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
+    except json.JSONDecodeError:
+        pretty_json = str(list_content)
+
     # Берём соответствующий prompt
-    prompt_bullets = bullets_prompts.get(section, "")  
+    prompt_bullets = bullets_prompts.get(section, "")
 
     # Формируем prompt_parts
     raw_parts = [
         prompt_bullets,
-        list_content
+        pretty_json
     ]
 
     prompt_parts = []
     for part in raw_parts:
-            if isinstance(part, list):
-                # Если это список, склеиваем через переносы строк
-                prompt_parts.append("\n".join(part))
-            else:
-                prompt_parts.append(str(part))
+        if isinstance(part, list):
+            prompt_parts.append("\n".join(part))
+        else:
+            prompt_parts.append(str(part))
 
     try:
         response = model_obj.generate_content(prompt_parts)
     except Exception as e:
-        print(f"Error in model.generate_content: {e}")
+        print(f"Error in model.generate_content for {section}: {e}")
         return
 
     file_name = f"report_{section}.txt"
-    save_to_drive(file_name, response.text, my_folder = "18Lk31SodxZB3qgZm4ElX3BCejQihreVC")
+    save_to_drive(file_name, response.text, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
+    print(f"{section}: буллиты успешно записаны.")
 
 if datetime.today().weekday() == 3:
   create_bullets("world")
