@@ -748,33 +748,42 @@ lists_prompts = {
         "prices": lists_prices
 }
 
-### design
-file_id = find_file_in_drive("design_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+### prioritise
+file_id = find_file_in_drive("prioritise_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
-    design_world = download_text_file(file_id)
+    prioritise_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
-    design_world = ""
+    prioritise_world = ""
 
-file_id = find_file_in_drive("design_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("prioritise_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
-    design_rus = download_text_file(file_id)
+    prioritise_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
-    design_rus = ""
+    prioritise_rus = ""
 
-file_id = find_file_in_drive("design_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("prioritise_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
-    design_prices = download_text_file(file_id)
+    prioritise_prices = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
-    design_prices = ""
+    prioritise_prices = ""
 
-design_prompts = {
-        "world": design_world,
-        "rus": design_rus,
-        "prices": design_prices
+prioritise_prompts = {
+        "world": prioritise_world,
+        "rus": prioritise_rus,
+        "prices": prioritise_prices
 }
+
+### design
+
+file_id = find_file_in_drive("design.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+try:
+    prompt_design = download_text_file(file_id)
+except Exception as e:
+    print("Ошибка при скачивании файла:", e)
+    prompt_design = ""
 
 ### bullets
 file_id = find_file_in_drive("bullets_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
@@ -947,24 +956,67 @@ create_news_lists("rus")
 time.sleep(60)
 create_news_lists("prices")
 
-def design(section):
+def prioritise(section):
 
     file_name = f"{section}.json"
     file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
     news_list = download_text_file(file_id)
 
-    prompt_design = design_prompts.get(section, "")    
+    prompt_prioritise = prioritise_prompts.get(section, "")    
 
     raw_parts = [
-        prompt_design,
-        example,
+        prompt_prioritise,
         news_list
     ]
 
     prompt_parts = []
     for part in raw_parts:
         if isinstance(part, list):
-            # Если это список, склеиваем через переносы строк
+            prompt_parts.append("\n".join(part))
+        else:
+            prompt_parts.append(str(part))
+
+    try:
+        response = model_obj.generate_content(prompt_parts)
+        response_text = response.text.strip()
+    except Exception as e:
+        print(f"Error in model.generate_content for '{file_name}': {e}.")
+        return
+
+    # Пытаемся распарсить JSON от модели
+    try:
+        filtered_list = json.loads(response_text)
+    except json.JSONDecodeError:
+        print(f"⚠️ Модель вернула невалидный JSON. Сохраняю как есть в текстовый файл.")
+        save_to_drive(file_name.replace(".json", ".txt"), response_text,
+                      "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe", file_format="txt")
+        return
+
+    # Записываем итог в тот же файл <section>.json на Google Drive
+    save_to_drive(file_name, filtered_list,
+                  "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe", file_format="json")
+
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
+prioritise("prices")
+
+def design(section):
+    # Получаем JSON с отфильтрованными новостями
+    file_name_json = f"{section}.json"
+    file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    news_list_raw = download_text_file(file_id)
+
+    raw_parts = [
+        prompt_design,
+        example,
+        news_list_raw
+    ]
+
+    prompt_parts = []
+    for part in raw_parts:
+        if isinstance(part, list):
             prompt_parts.append("\n".join(part))
         else:
             prompt_parts.append(str(part))
@@ -972,10 +1024,12 @@ def design(section):
     try:
         response = model_obj.generate_content(prompt_parts)
     except Exception as e:
-        print(f"Error in model.generate_content for '{file_name}': {e}.")
+        print(f"Error in model.generate_content for '{file_name_json}': {e}.")
+        return
 
-    # Записываем итог в тот же файл <section>.txt на Google Drive
-    save_to_drive(file_name, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
+    # Записываем результат в отдельный .txt файл
+    file_name_txt = f"{section}.txt"
+    save_to_drive(file_name_txt, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
 
 design("world")
 time.sleep(60)
