@@ -1127,7 +1127,14 @@ def read_top_urls(section, max_chars=1500):
     # Генерация топ ссылок
     try:
         response = model_obj.generate_content(raw_parts)
-        top_links_json = json.loads(response.text)
+        if not hasattr(response, "candidates") or not response.candidates:
+            print(f"Модель не вернула кандидатов для топ ссылок {section}.")
+            return
+        candidate = response.candidates[0]
+        if not hasattr(candidate, "content") or not candidate.content:
+            print(f"Кандидат без содержимого для топ ссылок {section}.")
+            return
+        top_links_json = json.loads(candidate.content)
     except Exception as e:
         print(f"Ошибка генерации топ ссылок для {section}: {e}")
         return
