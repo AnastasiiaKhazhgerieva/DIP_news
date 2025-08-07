@@ -1134,7 +1134,7 @@ def read_top_urls(section, max_chars=1500):
         if not hasattr(candidate, "content") or not candidate.content:
             print(f"Кандидат без содержимого для топ ссылок {section}.")
             return
-        top_links_json = json.loads(candidate.content)
+        top_links_json = json.loads(candidate.content.text)
     except Exception as e:
         print(f"Ошибка генерации топ ссылок для {section}: {e}")
         return
@@ -1169,10 +1169,10 @@ def read_top_urls(section, max_chars=1500):
 
 #if datetime.today().weekday() == 3:
 read_top_urls("world")
-time.sleep(60)
-read_top_urls("rus")
-time.sleep(60)
-read_top_urls("prices")
+#time.sleep(60)
+#read_top_urls("rus")
+#time.sleep(60)
+#read_top_urls("prices")
 
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
