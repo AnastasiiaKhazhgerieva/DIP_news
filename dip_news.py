@@ -1088,11 +1088,11 @@ def design(section):
     file_name_txt = f"{section}.txt"
     save_to_drive(file_name_txt, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
 
-design("world")
-time.sleep(60)
-design("rus")
-time.sleep(60)
-design("prices")
+#design("world")
+#time.sleep(60)
+#design("rus")
+#time.sleep(60)
+#design("prices")
 #telegram_lists()
 
 def read_top_urls(section, max_chars=1500):
@@ -1161,11 +1161,11 @@ def read_top_urls(section, max_chars=1500):
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
 #if datetime.today().weekday() == 3:
-#read_top_urls("world")
-#time.sleep(60)
-#read_top_urls("rus")
-#time.sleep(60)
-#read_top_urls("prices")
+read_top_urls("world")
+time.sleep(60)
+read_top_urls("rus")
+time.sleep(60)
+read_top_urls("prices")
 
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
