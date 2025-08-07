@@ -1127,14 +1127,27 @@ def read_top_urls(section, max_chars=1500):
     # Генерация топ ссылок
     try:
         response = model_obj.generate_content(raw_parts)
+
         if not hasattr(response, "candidates") or not response.candidates:
             print(f"Модель не вернула кандидатов для топ ссылок {section}.")
             return
         candidate = response.candidates[0]
+
         if not hasattr(candidate, "content") or not candidate.content:
             print(f"Кандидат без содержимого для топ ссылок {section}.")
             return
-        top_links_json = json.loads(candidate.content.text)
+
+        content_str = str(candidate.content)
+
+        start = content_str.find('[')
+        end = content_str.rfind(']')
+        if start == -1 or end == -1:
+            print("Не удалось найти JSON-массив в ответе модели.")
+            return
+        json_str = content_str[start:end+1]
+
+        top_links_json = json.loads(json_str)
+
     except Exception as e:
         print(f"Ошибка генерации топ ссылок для {section}: {e}")
         return
@@ -1166,6 +1179,7 @@ def read_top_urls(section, max_chars=1500):
         file_format="json"
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
+
 
 #if datetime.today().weekday() == 3:
 read_top_urls("world")
