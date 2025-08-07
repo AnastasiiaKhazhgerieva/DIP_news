@@ -945,6 +945,15 @@ def create_news_lists(section):
             continue
 
         raw_reply = response.candidates[0].content if hasattr(response.candidates[0], "content") else None
+        
+        raw_reply = getattr(response.candidates[0], "content", None)
+        if raw_reply is not None and not isinstance(raw_reply, str):
+            # Если это не строка, попробуем получить текст из поля 'text' или 'message' (зависит от API)
+            # Или просто привести к строке
+            try:
+                raw_reply = str(raw_reply)
+            except Exception:
+                raw_reply = None
 
         if not raw_reply:
             print(f"Пустой текст кандидата для '{json_filename}'. Пропускаем.")
