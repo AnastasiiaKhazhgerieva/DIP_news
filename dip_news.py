@@ -990,16 +990,23 @@ def prioritise(section):
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
 
-    file_id = find_file_in_drive(file_name, folder_id)
-    news_list_raw = download_text_file(file_id)
+    try:
+        file_id = find_file_in_drive(file_name, folder_id)
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
+        return
+    except Exception as e:
+        print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
+        return
+
+    if not news_list_raw.strip():
+        print(f"❌ Файл {file_name} пустой.")
+        return
 
     prompt_prioritise = prioritise_prompts.get(section, "")
 
-    # Составляем промпт
-    raw_parts = [
-        prompt_prioritise,
-        news_list_raw
-    ]
+    raw_parts = [prompt_prioritise, news_list_raw]
 
     prompt_parts = []
     for part in raw_parts:
@@ -1010,29 +1017,29 @@ def prioritise(section):
 
     try:
         response = model_obj.generate_content(prompt_parts)
-        response_text = response.text.strip()
+        response_text = getattr(response, "text", "").strip()
     except Exception as e:
         print(f"❌ Ошибка генерации от модели для '{file_name}': {e}")
         return
 
-    # Убираем обёртку ```json ... ```
+    # Убираем markdown-обертки, если есть
     if response_text.startswith("```json"):
         response_text = response_text[7:]
     if response_text.endswith("```"):
         response_text = response_text[:-3]
     response_text = response_text.strip()
 
-    # Пробуем распарсить JSON
+    # Пытаемся распарсить ответ как JSON
     try:
         filtered_list = json.loads(response_text)
-        assert isinstance(filtered_list, list)
+        if not isinstance(filtered_list, list):
+            raise ValueError(f"Ожидался список, а пришло {type(filtered_list)}")
     except Exception as e:
         print(f"⚠️ Не удалось распарсить JSON в prioritise({section}): {e}")
-        print("Сохраняем в текстовом виде для отладки.")
-        save_to_drive(file_name.replace(".json", ".txt"), response_text, folder_id, file_format="txt")
+        save_to_drive(file_name.replace(".json", "_prioritise_error.txt"), response_text, folder_id, file_format="txt")
         return
 
-    # ✅ Сохраняем корректный JSON
+    # Сохраняем результат
     save_to_drive(file_name, filtered_list, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
