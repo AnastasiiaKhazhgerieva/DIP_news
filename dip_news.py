@@ -18,6 +18,7 @@ import pandas as pd
 import google.generativeai as genai
 import io
 import base64
+import re
 try: # google colab не запускается, когда раним через workflow, он там есть по умолчанию, поэтому имени в PyPL такого нет
     from google.colab import userdata, drive
 except ImportError:
