@@ -873,7 +873,6 @@ def extract_json(text: str):
     return None
 
 def create_news_lists(section):
-
     # Если сегодня не суббота, пробуем прочитать существующий файл <section>.json
     if datetime.today().weekday() != 5:  # 5 = Saturday
         try:
@@ -892,7 +891,7 @@ def create_news_lists(section):
 
     # Достаём список JSON-файлов и prompt
     json_files = section_to_files[section]
-    prompt_list = lists_prompts.get(section, "")    
+    prompt_list = lists_prompts.get(section, "")
 
     for json_filename in json_files:
         base_name, ext = os.path.splitext(json_filename)
@@ -926,10 +925,7 @@ def create_news_lists(section):
 
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
 
-        raw_parts = [
-            prompt_list,
-            news_json_string
-        ]
+        raw_parts = [prompt_list, news_json_string]
 
         prompt_parts = []
         for part in raw_parts:
@@ -941,18 +937,25 @@ def create_news_lists(section):
         try:
             response = model_obj.generate_content(prompt_parts)
         except Exception as e:
-            print(f"Error in model.generate_content for '{json_filename}': {e}.")
+            print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
+            continue
+
+        if not hasattr(response, "candidates") or not response.candidates:
+            print(f"Модель не вернула кандидатов для '{json_filename}'. Пропускаем.")
+            continue
+
+        if not hasattr(response, "text") or response.text is None:
+            print(f"response.text отсутствует для '{json_filename}'. Возможно, причина: finish_reason=1.")
+            print("Подготовленный prompt:\n", "\n\n".join(prompt_parts)[:300], "…")
             continue
 
         raw_reply = response.text
 
-        # Попытка вычленить JSON-список (или объект) из текста модели:
         items = extract_json(raw_reply)
         if items is None:
             print(f"Ответ модели для '{json_filename}' не содержит валидный JSON:\n{raw_reply[:200]}… Пропускаем.")
             continue
 
-        # Если получили одиночный объект (dict), обернём в список:
         if isinstance(items, dict):
             items = [items]
 
@@ -960,7 +963,6 @@ def create_news_lists(section):
             print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
             continue
 
-        # Дальше идёт проверка каждого entry в items: title, url и т.д.
         for entry in items:
             url = entry.get("url")
             title = entry.get("title")
@@ -975,7 +977,7 @@ def create_news_lists(section):
 
     # Сохраняем объединённый JSON в файл <section>.json
     output_file = f"{section}.json"
-    save_to_drive(output_file, combined_items, my_folder = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 create_news_lists("world")
