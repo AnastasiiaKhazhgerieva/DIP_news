@@ -800,7 +800,7 @@ except Exception as e:
     print("Ошибка при скачивании файла:", e)
     top_rus = ""
 
-file_id = find_file_in_drive(top_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("top_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     top_prices = download_text_file(file_id)
 except Exception as e:
