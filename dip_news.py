@@ -671,18 +671,18 @@ rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabot
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
-fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
-fetch_ved(dates_ved, "ved.json")
-fetch_rbc(rubrics_rbc, dates, "rbc.json")
-try:
-    fetch_agro(dates, "agro.json")
-except Exception as e:
-    pass
-fetch_rg(rubrics_rg, dates, "rg.json")
-fetch_ria(dates, "ria.json")
-fetch_autostat(dates, "autostat.json", rubrics_auto)
+#fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
+#fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+#fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
+#fetch_ved(dates_ved, "ved.json")
+#fetch_rbc(rubrics_rbc, dates, "rbc.json")
+#try:
+#    fetch_agro(dates, "agro.json")
+#except Exception as e:
+#    pass
+#fetch_rg(rubrics_rg, dates, "rg.json")
+#fetch_ria(dates, "ria.json")
+#fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -980,31 +980,27 @@ def create_news_lists(section):
     save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
-create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
+#create_news_lists("world")
+#time.sleep(60)
+#create_news_lists("rus")
+#time.sleep(60)
+#create_news_lists("prices")
 
 def prioritise(section):
-
     file_name = f"{section}.json"
-    file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
-    news_list = download_text_file(file_id)
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
 
-    prompt_prioritise = prioritise_prompts.get(section, "")    
+    try:
+        file_id = find_file_in_drive(file_name, folder_id)
+        news_list = download_text_file(file_id)
+    except Exception as e:
+        print(f"Ошибка при чтении '{file_name}': {e}")
+        return
 
-    raw_parts = [
-        prompt_prioritise,
-        news_list
-    ]
+    prompt_prioritise = prioritise_prompts.get(section, "")
 
-    prompt_parts = []
-    for part in raw_parts:
-        if isinstance(part, list):
-            prompt_parts.append("\n".join(part))
-        else:
-            prompt_parts.append(str(part))
+    raw_parts = [prompt_prioritise, news_list]
+    prompt_parts = [("\n".join(p) if isinstance(p, list) else str(p)) for p in raw_parts]
 
     try:
         response = model_obj.generate_content(prompt_parts)
@@ -1013,18 +1009,19 @@ def prioritise(section):
         print(f"Error in model.generate_content for '{file_name}': {e}.")
         return
 
-    # Пытаемся распарсить JSON от модели
+    # Попытка распарсить JSON
     try:
         filtered_list = json.loads(response_text)
+        save_to_drive(file_name, filtered_list, folder_id, file_format="json")
+        print(f"✅ JSON записан: {file_name}")
     except json.JSONDecodeError:
-        print(f"⚠️ Модель вернула невалидный JSON. Сохраняю как есть в текстовый файл.")
-        save_to_drive(file_name.replace(".json", ".txt"), response_text,
-                      "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe", file_format="txt")
-        return
+        print(f"⚠️ Модель вернула невалидный JSON. Сохраняю как текст в JSON.")
 
-    # Записываем итог в тот же файл <section>.json на Google Drive
-    save_to_drive(file_name, filtered_list,
-                  "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe", file_format="json")
+        fallback_json = {
+            "raw_text": response_text,
+            "parsed": False
+        }
+        save_to_drive(file_name, fallback_json, folder_id, file_format="json")
 
 prioritise("world")
 time.sleep(60)
