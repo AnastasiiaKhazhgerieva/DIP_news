@@ -1116,81 +1116,62 @@ def read_top_urls(section, max_chars=1500):
             combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
         return combined_text
 
-    def clean_markdown_json(text):
-        # Убираем обёртку ```json ... ```
-        pattern = r"```json\s*(.*?)\s*```"
-        match = re.search(pattern, text, flags=re.DOTALL)
-        if match:
-            return match.group(1)
-        return text
-
     file_name = f"{section}.json"
-    file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
-    news_list = download_text_file(file_id)
-
-    prompt_top = top_prompts.get(section, "")
-    raw_parts = [prompt_top, news_list]
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
 
     try:
-        response = model_obj.generate_content(raw_parts)
-
-        if not hasattr(response, "candidates") or not response.candidates:
-            print(f"Модель не вернула кандидатов для топ ссылок {section}.")
-            return
-        candidate_content = getattr(response.candidates[0], "content", None)
-
-        if candidate_content is None:
-            print(f"Кандидат без содержимого для топ ссылок {section}.")
-            return
-
-        if not isinstance(candidate_content, str):
-            try:
-                candidate_content = str(candidate_content)
-            except Exception:
-                print("Не удалось привести содержимое кандидата к строке.")
-                return
-
-        cleaned_content = clean_markdown_json(candidate_content)
-
-        items = extract_json(cleaned_content)
-        if items is None:
-            print(f"Ответ модели не содержит валидный JSON:\n{cleaned_content[:200]}…")
-            return
-
-        if isinstance(items, dict):
-            items = [items]
-        if not isinstance(items, list):
-            print(f"Ответ модели вернул не список, а {type(items)}.")
-            return
-
-        results = []
-        for item in items:
-            url = item.get("url") or item.get("URL")
-            title = item.get("title", "")
-            if not url:
-                continue
-            try:
-                resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-                soup = BeautifulSoup(resp.text, "html.parser")
-                page_text = extract_main_text(soup, max_chars=max_chars)
-                results.append({
-                    "url": url,
-                    "title": title,
-                    "text": page_text
-                })
-            except Exception as e:
-                print(f"Ошибка при обработке {url}: {e}")
-
-        save_to_drive(
-            file_name,
-            results,
-            my_folder="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V",
-            file_format="json"
-        )
-        print(f"{section}: сохранено {len(results)} ссылок с текстами.")
-
+        file_id = find_file_in_drive(file_name, folder_id)
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
+        return
     except Exception as e:
-        print(f"Ошибка генерации топ ссылок для {section}: {e}")
+        print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
+        return
+
+    if not news_list_raw.strip():
+        print(f"❌ Файл {file_name} пустой.")
+        return
+
+    prompt_top = top_prompts.get(section, "")
+
+    raw_parts = [prompt_top, news_list_raw]
+
+    prompt_parts = []
+    for part in raw_parts:
+        if isinstance(part, list):
+            prompt_parts.append("\n".join(part))
+        else:
+            prompt_parts.append(str(part))
+
+    try:
+        response = model_obj.generate_content(prompt_parts)
+        response_text = getattr(response, "text", "").strip()
+    except Exception as e:
+        print(f"❌ Ошибка генерации от модели для '{file_name}': {e}")
+        return
+
+    # Убираем markdown-обертки, если есть
+    if response_text.startswith("```json"):
+        response_text = response_text[7:]
+    if response_text.endswith("```"):
+        response_text = response_text[:-3]
+    response_text = response_text.strip()
+
+    # Пытаемся распарсить ответ как JSON
+    try:
+        filtered_list = json.loads(response_text)
+        if not isinstance(filtered_list, list):
+            raise ValueError(f"Ожидался список, а пришло {type(filtered_list)}")
+    except Exception as e:
+        print(f"⚠️ Не удалось распарсить JSON в prioritise({section}): {e}")
+        save_to_drive(file_name.replace(".json", "_prioritise_error.txt"), response_text, folder_id, file_format="txt")
+        return
+
+    # Сохраняем результат
+    folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
+    save_to_drive(file_name, filtered_list, folder_id, file_format="json")
+    print(f"✅ top({section}) — сохранён корректный JSON.")
 
 #if datetime.today().weekday() == 3:
 read_top_urls("world")
