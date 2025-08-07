@@ -1115,6 +1115,14 @@ def read_top_urls(section, max_chars=1500):
             combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
         return combined_text
 
+    def clean_markdown_json(text):
+        # Убираем обёртку ```json ... ```
+        pattern = r"```json\s*(.*?)\s*```"
+        match = re.search(pattern, text, flags=re.DOTALL)
+        if match:
+            return match.group(1)
+        return text
+
     file_name = f"{section}.json"
     file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
     news_list = download_text_file(file_id)
@@ -1141,9 +1149,11 @@ def read_top_urls(section, max_chars=1500):
                 print("Не удалось привести содержимое кандидата к строке.")
                 return
 
-        items = extract_json(candidate_content)
+        cleaned_content = clean_markdown_json(candidate_content)
+
+        items = extract_json(cleaned_content)
         if items is None:
-            print(f"Ответ модели не содержит валидный JSON:\n{candidate_content[:200]}…")
+            print(f"Ответ модели не содержит валидный JSON:\n{cleaned_content[:200]}…")
             return
 
         if isinstance(items, dict):
@@ -1152,7 +1162,6 @@ def read_top_urls(section, max_chars=1500):
             print(f"Ответ модели вернул не список, а {type(items)}.")
             return
 
-        # Теперь работаем с полученными ссылками
         results = []
         for item in items:
             url = item.get("url") or item.get("URL")
