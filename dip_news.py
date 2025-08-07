@@ -1180,9 +1180,9 @@ def create_bullets(section):
     print(f"{section}: буллиты успешно записаны.")
 
 #if datetime.today().weekday() == 3:
-  create_bullets("world")
-  time.sleep(60)
-  create_bullets("rus")
-  time.sleep(60)
-  create_bullets("prices")
-  #telegram_bullets()
+create_bullets("world")
+time.sleep(60)
+create_bullets("rus")
+time.sleep(60)
+create_bullets("prices")
+#telegram_bullets()
