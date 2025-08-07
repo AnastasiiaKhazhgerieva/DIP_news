@@ -944,12 +944,11 @@ def create_news_lists(section):
             print(f"Модель не вернула кандидатов для '{json_filename}'. Пропускаем.")
             continue
 
-        if not hasattr(response, "text") or response.text is None:
-            print(f"response.text отсутствует для '{json_filename}'. Возможно, причина: finish_reason=1.")
-            print("Подготовленный prompt:\n", "\n\n".join(prompt_parts)[:300], "…")
-            continue
+        raw_reply = response.candidates[0].content if hasattr(response.candidates[0], "content") else None
 
-        raw_reply = response.text
+        if not raw_reply:
+            print(f"Пустой текст кандидата для '{json_filename}'. Пропускаем.")
+            continue
 
         items = extract_json(raw_reply)
         if items is None:
@@ -978,6 +977,8 @@ def create_news_lists(section):
     # Сохраняем объединённый JSON в файл <section>.json
     output_file = f"{section}.json"
     save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+
+    print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 create_news_lists("world")
