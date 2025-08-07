@@ -1098,24 +1098,6 @@ telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
 
-    def extract_main_text(soup, max_chars=1500, min_paragraph_len=50, max_paragraphs=5):
-        paragraphs = []
-        for p in soup.find_all('p'):
-            text = p.get_text(" ", strip=True)
-            if len(text) < min_paragraph_len:
-                continue
-            low = text.lower()
-            if any(word in low for word in ["cookie", "subscribe", "advert", "реклама", "подпишитесь"]):
-                continue
-            paragraphs.append(text)
-            if len(paragraphs) >= max_paragraphs:
-                break
-
-        combined_text = " ".join(paragraphs)
-        if len(combined_text) > max_chars:
-            combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
-        return combined_text
-
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
 
@@ -1180,9 +1162,9 @@ if datetime.today().weekday() == 3:
     time.sleep(60)
     choose_top_urls("prices")
 
-def read_top_urls(section, max_chars=1500):
+def read_top_urls(section, max_chars=3000):
 
-    def extract_main_text(soup, max_chars=1500, min_paragraph_len=50, max_paragraphs=5):
+    def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
         paragraphs = []
         for p in soup.find_all('p'):
             text = p.get_text(" ", strip=True)
