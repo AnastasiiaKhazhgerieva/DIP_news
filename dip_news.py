@@ -1115,71 +1115,72 @@ def read_top_urls(section, max_chars=1500):
             combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
         return combined_text
 
-    # Загружаем JSON с новостями после prioritise
     file_name = f"{section}.json"
     file_id = find_file_in_drive(file_name, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
     news_list = download_text_file(file_id)
 
-    # Получаем промпт
     prompt_top = top_prompts.get(section, "")
     raw_parts = [prompt_top, news_list]
 
-    # Генерация топ ссылок
     try:
         response = model_obj.generate_content(raw_parts)
 
         if not hasattr(response, "candidates") or not response.candidates:
             print(f"Модель не вернула кандидатов для топ ссылок {section}.")
             return
-        candidate = response.candidates[0]
+        candidate_content = getattr(response.candidates[0], "content", None)
 
-        if not hasattr(candidate, "content") or not candidate.content:
+        if candidate_content is None:
             print(f"Кандидат без содержимого для топ ссылок {section}.")
             return
 
-        content_str = str(candidate.content)
+        if not isinstance(candidate_content, str):
+            try:
+                candidate_content = str(candidate_content)
+            except Exception:
+                print("Не удалось привести содержимое кандидата к строке.")
+                return
 
-        start = content_str.find('[')
-        end = content_str.rfind(']')
-        if start == -1 or end == -1:
-            print("Не удалось найти JSON-массив в ответе модели.")
+        items = extract_json(candidate_content)
+        if items is None:
+            print(f"Ответ модели не содержит валидный JSON:\n{candidate_content[:200]}…")
             return
-        json_str = content_str[start:end+1]
 
-        top_links_json = json.loads(json_str)
+        if isinstance(items, dict):
+            items = [items]
+        if not isinstance(items, list):
+            print(f"Ответ модели вернул не список, а {type(items)}.")
+            return
+
+        # Теперь работаем с полученными ссылками
+        results = []
+        for item in items:
+            url = item.get("url") or item.get("URL")
+            title = item.get("title", "")
+            if not url:
+                continue
+            try:
+                resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                soup = BeautifulSoup(resp.text, "html.parser")
+                page_text = extract_main_text(soup, max_chars=max_chars)
+                results.append({
+                    "url": url,
+                    "title": title,
+                    "text": page_text
+                })
+            except Exception as e:
+                print(f"Ошибка при обработке {url}: {e}")
+
+        save_to_drive(
+            file_name,
+            results,
+            my_folder="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V",
+            file_format="json"
+        )
+        print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
     except Exception as e:
         print(f"Ошибка генерации топ ссылок для {section}: {e}")
-        return
-
-    # Скачиваем и очищаем страницы
-    results = []
-    for item in top_links_json:
-        url = item.get("url") or item.get("URL")
-        title = item.get("title", "")
-        if not url:
-            continue
-        try:
-            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-            soup = BeautifulSoup(resp.text, "html.parser")
-            page_text = extract_main_text(soup, max_chars=max_chars)
-            results.append({
-                "url": url,
-                "title": title,
-                "text": page_text
-            })
-        except Exception as e:
-            print(f"Ошибка при обработке {url}: {e}")
-
-    # Сохраняем JSON с текстами в другую папку
-    save_to_drive(
-        file_name,
-        results,
-        my_folder="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V",
-        file_format="json"
-    )
-    print(f"{section}: сохранено {len(results)} ссылок с текстами.")
-
 
 #if datetime.today().weekday() == 3:
 read_top_urls("world")
