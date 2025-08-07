@@ -1251,7 +1251,7 @@ def read_top_urls(section, max_chars=1500):
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
     list_file = f"{section}.json"
-    file_id = find_file_in_drive(list_file, "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V")
+    file_id = find_file_in_drive(list_file, "13KDzhQ0Y6GzKzEaMZggHoF38bglN358r")
     list_content = download_text_file(file_id)
 
     # Если пришёл JSON-строкой, делаем красиво
