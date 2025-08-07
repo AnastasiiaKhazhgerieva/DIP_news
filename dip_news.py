@@ -1174,11 +1174,11 @@ def choose_top_urls(section, max_chars=1500):
     print(f"✅ top({section}) — сохранён корректный JSON.")
 
 if datetime.today().weekday() == 3:
-choose_top_urls("world")
-time.sleep(60)
-choose_top_urls("rus")
-time.sleep(60)
-choose_top_urls("prices")
+    choose_top_urls("world")
+    time.sleep(60)
+    choose_top_urls("rus")
+    time.sleep(60)
+    choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=1500):
 
@@ -1242,11 +1242,11 @@ def read_top_urls(section, max_chars=1500):
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
 if datetime.today().weekday() == 3:
-read_top_urls("world")
-time.sleep(60)
-read_top_urls("rus")
-time.sleep(60)
-read_top_urls("prices")
+    read_top_urls("world")
+    time.sleep(60)
+    read_top_urls("rus")
+    time.sleep(60)
+    read_top_urls("prices")
 
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
@@ -1317,9 +1317,9 @@ def create_bullets(section):
     print(f"{section}: буллиты успешно записаны.")
 
 if datetime.today().weekday() == 3:
-create_bullets("world")
-time.sleep(60)
-create_bullets("rus")
-time.sleep(60)
-create_bullets("prices")
-telegram_bullets()
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
+    create_bullets("prices")
+    telegram_bullets()
