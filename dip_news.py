@@ -1064,7 +1064,7 @@ time.sleep(60)
 design("rus")
 time.sleep(60)
 design("prices")
-telegram_lists()
+#telegram_lists()
 
 def read_top_urls(section, max_chars=1500):
     import requests
@@ -1133,7 +1133,7 @@ def read_top_urls(section, max_chars=1500):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 3:
+#if datetime.today().weekday() == 3:
 read_top_urls("world")
 time.sleep(60)
 read_top_urls("rus")
@@ -1179,10 +1179,10 @@ def create_bullets(section):
     save_to_drive(file_name, response.text, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
     print(f"{section}: буллиты успешно записаны.")
 
-if datetime.today().weekday() == 3:
+#if datetime.today().weekday() == 3:
   create_bullets("world")
   time.sleep(60)
   create_bullets("rus")
   time.sleep(60)
   create_bullets("prices")
-  telegram_bullets()
+  #telegram_bullets()
