@@ -1251,8 +1251,12 @@ read_top_urls("prices")
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
     list_file = f"{section}.json"
-    file_id = find_file_in_drive(list_file, "13KDzhQ0Y6GzKzEaMZggHoF38bglN358r")
-    list_content = download_text_file(file_id)
+    try:
+        file_id = find_file_in_drive(list_file, "13KDzhQ0Y6GzKzEaMZggHoF38bglN358r")
+        list_content = download_text_file(file_id)
+    except Exception as e:
+        print(f"Ошибка загрузки файла {list_file}: {e}")
+        return
 
     # Если пришёл JSON-строкой, делаем красиво
     try:
@@ -1265,10 +1269,7 @@ def create_bullets(section):
     prompt_bullets = bullets_prompts.get(section, "")
 
     # Формируем prompt_parts
-    raw_parts = [
-        prompt_bullets,
-        pretty_json
-    ]
+    raw_parts = [prompt_bullets, pretty_json]
 
     prompt_parts = []
     for part in raw_parts:
@@ -1283,8 +1284,36 @@ def create_bullets(section):
         print(f"Error in model.generate_content for {section}: {e}")
         return
 
+    # Обработка ответа модели — проверяем наличие кандидатов
+    if not hasattr(response, "candidates") or not response.candidates:
+        print(f"Модель не вернула кандидатов для {section}.")
+        return
+
+    candidate = response.candidates[0]
+    # Иногда текст в content, иногда в text — пытаемся достать
+    raw_reply = getattr(candidate, "content", None) or getattr(candidate, "text", None)
+
+    if raw_reply is None:
+        print(f"Кандидат без текста ответа для {section}.")
+        return
+
+    if not isinstance(raw_reply, str):
+        try:
+            raw_reply = str(raw_reply)
+        except Exception:
+            print(f"Не удалось привести ответ модели к строке для {section}.")
+            return
+
+    # Проверка на пустой ответ
+    if not raw_reply.strip():
+        print(f"Пустой ответ модели для {section}.")
+        return
+
+    # Если нужно, можно тут попытаться валидировать JSON или текст, если ожидается конкретный формат
+    # Для буллитов обычно это просто текст, поэтому достаточно проверки
+
     file_name = f"report_{section}.txt"
-    save_to_drive(file_name, response.text, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
+    save_to_drive(file_name, raw_reply, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
     print(f"{section}: буллиты успешно записаны.")
 
 if datetime.today().weekday() == 3:
