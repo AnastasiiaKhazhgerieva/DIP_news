@@ -990,38 +990,51 @@ def prioritise(section):
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
 
-    try:
-        file_id = find_file_in_drive(file_name, folder_id)
-        news_list = download_text_file(file_id)
-    except Exception as e:
-        print(f"Ошибка при чтении '{file_name}': {e}")
-        return
+    file_id = find_file_in_drive(file_name, folder_id)
+    news_list_raw = download_text_file(file_id)
 
     prompt_prioritise = prioritise_prompts.get(section, "")
 
-    raw_parts = [prompt_prioritise, news_list]
-    prompt_parts = [("\n".join(p) if isinstance(p, list) else str(p)) for p in raw_parts]
+    # Составляем промпт
+    raw_parts = [
+        prompt_prioritise,
+        news_list_raw
+    ]
+
+    prompt_parts = []
+    for part in raw_parts:
+        if isinstance(part, list):
+            prompt_parts.append("\n".join(part))
+        else:
+            prompt_parts.append(str(part))
 
     try:
         response = model_obj.generate_content(prompt_parts)
         response_text = response.text.strip()
     except Exception as e:
-        print(f"Error in model.generate_content for '{file_name}': {e}.")
+        print(f"❌ Ошибка генерации от модели для '{file_name}': {e}")
         return
 
-    # Попытка распарсить JSON
+    # Убираем обёртку ```json ... ```
+    if response_text.startswith("```json"):
+        response_text = response_text[7:]
+    if response_text.endswith("```"):
+        response_text = response_text[:-3]
+    response_text = response_text.strip()
+
+    # Пробуем распарсить JSON
     try:
         filtered_list = json.loads(response_text)
-        save_to_drive(file_name, filtered_list, folder_id, file_format="json")
-        print(f"✅ JSON записан: {file_name}")
-    except json.JSONDecodeError:
-        print(f"⚠️ Модель вернула невалидный JSON. Сохраняю как текст в JSON.")
+        assert isinstance(filtered_list, list)
+    except Exception as e:
+        print(f"⚠️ Не удалось распарсить JSON в prioritise({section}): {e}")
+        print("Сохраняем в текстовом виде для отладки.")
+        save_to_drive(file_name.replace(".json", ".txt"), response_text, folder_id, file_format="txt")
+        return
 
-        fallback_json = {
-            "raw_text": response_text,
-            "parsed": False
-        }
-        save_to_drive(file_name, fallback_json, folder_id, file_format="json")
+    # ✅ Сохраняем корректный JSON
+    save_to_drive(file_name, filtered_list, folder_id, file_format="json")
+    print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 prioritise("world")
 time.sleep(60)
@@ -1066,8 +1079,6 @@ design("prices")
 #telegram_lists()
 
 def read_top_urls(section, max_chars=1500):
-    import requests
-    from bs4 import BeautifulSoup
 
     def extract_main_text(soup, max_chars=1500, min_paragraph_len=50, max_paragraphs=5):
         paragraphs = []
@@ -1133,11 +1144,11 @@ def read_top_urls(section, max_chars=1500):
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
 #if datetime.today().weekday() == 3:
-read_top_urls("world")
-time.sleep(60)
-read_top_urls("rus")
-time.sleep(60)
-read_top_urls("prices")
+#read_top_urls("world")
+#time.sleep(60)
+#read_top_urls("rus")
+#time.sleep(60)
+#read_top_urls("prices")
 
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
@@ -1179,9 +1190,9 @@ def create_bullets(section):
     print(f"{section}: буллиты успешно записаны.")
 
 #if datetime.today().weekday() == 3:
-create_bullets("world")
-time.sleep(60)
-create_bullets("rus")
-time.sleep(60)
-create_bullets("prices")
+#create_bullets("world")
+#time.sleep(60)
+#create_bullets("rus")
+#time.sleep(60)
+#create_bullets("prices")
 #telegram_bullets()
