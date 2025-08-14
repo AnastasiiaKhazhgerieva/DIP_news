@@ -1221,16 +1221,41 @@ def choose_top_urls(section, max_chars=1500):
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
+        
+    candidate = response.candidates[0]
 
+    # Проверяем, не заблокирован ли ответ
+    if hasattr(candidate, "finish_reason") and candidate.finish_reason:
+        reason = candidate.finish_reason
+        if reason == "SAFETY":
+            print(f"❌ Ответ для '{file_name}' был заблокирован из-за политик безопасности (SAFETY).")
+        elif reason == "RECITATION":
+            print(f"❌ Ответ для '{file_name}' прерван (RECITATION).")
+        elif reason == "FINISH_REASON_UNSPECIFIED":
+            print(f"❌ Неизвестная причина завершения для '{file_name}'.")
+        else:
+            print(f"❌ Ответ прерван по причине: {reason}")
+        return
+    
+    # Проверяем content
+    if not hasattr(candidate, "content") or not candidate.content:
+        print(f"❌ Кандидат не содержит поля 'content' для '{file_name}'.")
+        return
+    
+    if not candidate.content.parts:
+        print(f"❌ Ответ модели не содержит частей (parts) для '{file_name}'.")
+        # Можно вывести весь response для отладки
+        try:
+            print(f"🔹 Полный ответ (упрощённо): {str(response)[:500]}")
+        except:
+            pass
+        return
+    
     # Проверяем кандидатов
     if not hasattr(response, "candidates") or not response.candidates:
         print(f"❌ Модель не вернула кандидатов для '{file_name}'.")
         return
 
-    candidate = response.candidates[0]
-    if not candidate.content or not candidate.content.parts:
-        print(f"❌ Ответ модели пустой или не содержит частей для '{file_name}'.")
-        return
 
     # ✅ ПРАВИЛЬНОЕ ИЗВЛЕЧЕНИЕ ТЕКСТА
     raw_reply = candidate.content.parts[0].text.strip()
@@ -1334,10 +1359,10 @@ def read_top_urls(section, max_chars=3000):
 
 model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
-if datetime.today().weekday() == 3:
-    read_top_urls("world")
-    time.sleep(60)
-    read_top_urls("rus")
+#if datetime.today().weekday() == 3:
+#    read_top_urls("world")
+#    time.sleep(60)
+#    read_top_urls("rus")
     #time.sleep(60)
     #read_top_urls("prices")
 
@@ -1409,10 +1434,10 @@ def create_bullets(section):
     save_to_drive(file_name, raw_reply, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
     print(f"{section}: буллиты успешно записаны.")
 
-if datetime.today().weekday() == 3:
-    create_bullets("world")
-    time.sleep(60)
-    create_bullets("rus")
+#if datetime.today().weekday() == 3:
+#    create_bullets("world")
+#    time.sleep(60)
+#    create_bullets("rus")
     #time.sleep(60)
     #create_bullets("prices")
     #telegram_bullets()
