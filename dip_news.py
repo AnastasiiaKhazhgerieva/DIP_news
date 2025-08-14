@@ -1115,6 +1115,8 @@ def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Папка с входными данными
 
+    combined_items = []  # Инициализация списка
+
     try:
         file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
@@ -1172,13 +1174,10 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
         return
 
-    # Инициализация списка для выбранных URL
-    combined_items = []
-
     for entry in items:
         url = entry.get("url")
         title = entry.get("title")
-        if url:  # Только если URL присутствует
+        if url:  # Проверяем, что URL есть
             combined_items.append({"title": title, "url": url})
 
     # Сохраняем результат в другую папку
