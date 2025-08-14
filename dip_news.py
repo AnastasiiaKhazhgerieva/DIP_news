@@ -1000,6 +1000,7 @@ def create_news_lists(section):
 def prioritise(section):
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
+    combined_items = []  # Инициализация списка
 
     try:
         file_id = find_file_in_drive(file_name, folder_id)
@@ -1016,7 +1017,6 @@ def prioritise(section):
         return
 
     prompt_prioritise = prioritise_prompts.get(section, "")
-
     raw_parts = [prompt_prioritise, news_list_raw]
 
     prompt_parts = []
@@ -1027,45 +1027,42 @@ def prioritise(section):
             prompt_parts.append(str(part))
 
     try:
-            response = model_obj.generate_content(prompt_parts)
-        except Exception as e:
-            print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
-            continue
+        response = model_obj.generate_content(prompt_parts)
+    except Exception as e:
+        print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
+        return
 
-        if not hasattr(response, "candidates") or not response.candidates:
-            print(f"Модель не вернула кандидатов для '{json_filename}'. Пропускаем.")
-            continue
+    if not hasattr(response, "candidates") or not response.candidates:
+        print(f"❌ Модель не вернула кандидатов для '{file_name}'.")
+        return
 
-        raw_reply = response.candidates[0].content if hasattr(response.candidates[0], "content") else None
-        
-        raw_reply = getattr(response.candidates[0], "content", None)
-        if raw_reply is not None and not isinstance(raw_reply, str):
-            # Если это не строка, попробуем получить текст из поля 'text' или 'message' (зависит от API)
-            # Или просто привести к строке
-            try:
-                raw_reply = str(raw_reply)
-            except Exception:
-                raw_reply = None
+    raw_reply = getattr(response.candidates[0], "content", None)
+    if raw_reply is not None and not isinstance(raw_reply, str):
+        try:
+            raw_reply = str(raw_reply)
+        except Exception:
+            raw_reply = None
 
-        if not raw_reply:
-            print(f"Пустой текст кандидата для '{json_filename}'. Пропускаем.")
-            continue
+    if not raw_reply:
+        print(f"❌ Пустой текст кандидата для '{file_name}'.")
+        return
 
-        items = extract_json(raw_reply)
-        if items is None:
-            print(f"Ответ модели для '{json_filename}' не содержит валидный JSON:\n{raw_reply[:200]}… Пропускаем.")
-            continue
+    items = extract_json(raw_reply)
+    if items is None:
+        print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:200]}…")
+        return
 
-        if isinstance(items, dict):
-            items = [items]
+    if isinstance(items, dict):
+        items = [items]
 
-        if not isinstance(items, list):
-            print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
-            continue
+    if not isinstance(items, list):
+        print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+        return
 
-        for entry in items:
-            url = entry.get("url")
-            title = entry.get("title")
+    for entry in items:
+        url = entry.get("url")
+        title = entry.get("title")
+        if url:  # Проверяем, что URL есть
             combined_items.append({"title": title, "url": url})
 
     # Сохраняем результат
