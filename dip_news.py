@@ -1027,31 +1027,49 @@ def prioritise(section):
             prompt_parts.append(str(part))
 
     try:
-        response = model_obj.generate_content(prompt_parts)
-        response_text = getattr(response, "text", "").strip()
-    except Exception as e:
-        print(f"❌ Ошибка генерации от модели для '{file_name}': {e}")
-        return
+            response = model_obj.generate_content(prompt_parts)
+        except Exception as e:
+            print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
+            continue
 
-    # Убираем markdown-обертки, если есть
-    if response_text.startswith("```json"):
-        response_text = response_text[7:]
-    if response_text.endswith("```"):
-        response_text = response_text[:-3]
-    response_text = response_text.strip()
+        if not hasattr(response, "candidates") or not response.candidates:
+            print(f"Модель не вернула кандидатов для '{json_filename}'. Пропускаем.")
+            continue
 
-    # Пытаемся распарсить ответ как JSON
-    try:
-        filtered_list = json.loads(response_text)
-        if not isinstance(filtered_list, list):
-            raise ValueError(f"Ожидался список, а пришло {type(filtered_list)}")
-    except Exception as e:
-        print(f"⚠️ Не удалось распарсить JSON в prioritise({section}): {e}")
-        save_to_drive(file_name.replace(".json", "_prioritise_error.txt"), response_text, folder_id, file_format="txt")
-        return
+        raw_reply = response.candidates[0].content if hasattr(response.candidates[0], "content") else None
+        
+        raw_reply = getattr(response.candidates[0], "content", None)
+        if raw_reply is not None and not isinstance(raw_reply, str):
+            # Если это не строка, попробуем получить текст из поля 'text' или 'message' (зависит от API)
+            # Или просто привести к строке
+            try:
+                raw_reply = str(raw_reply)
+            except Exception:
+                raw_reply = None
+
+        if not raw_reply:
+            print(f"Пустой текст кандидата для '{json_filename}'. Пропускаем.")
+            continue
+
+        items = extract_json(raw_reply)
+        if items is None:
+            print(f"Ответ модели для '{json_filename}' не содержит валидный JSON:\n{raw_reply[:200]}… Пропускаем.")
+            continue
+
+        if isinstance(items, dict):
+            items = [items]
+
+        if not isinstance(items, list):
+            print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
+            continue
+
+        for entry in items:
+            url = entry.get("url")
+            title = entry.get("title")
+            combined_items.append({"title": title, "url": url})
 
     # Сохраняем результат
-    save_to_drive(file_name, filtered_list, folder_id, file_format="json")
+    save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 prioritise("world")
@@ -1089,12 +1107,12 @@ def design(section):
     file_name_txt = f"{section}.txt"
     save_to_drive(file_name_txt, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
 
-design("world")
-time.sleep(60)
-design("rus")
-time.sleep(60)
-design("prices")
-telegram_lists()
+#design("world")
+#time.sleep(60)
+#design("rus")
+#time.sleep(60)
+#design("prices")
+#telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
 
