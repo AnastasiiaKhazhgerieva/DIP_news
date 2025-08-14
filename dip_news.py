@@ -70,7 +70,13 @@ MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на goo
 API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска через workflow
 #API_KEY = userdata.get('gemini_api_key') # строка для локального запуска
 genai.configure(api_key=API_KEY)
-model_obj = genai.GenerativeModel('gemini-2.5-pro')
+model_obj = genai.GenerativeModel(
+    model_name="gemini-2.5-pro",
+    generation_config={
+        "response_mime_type": "application/json",  # ← важно!
+    },
+    safety_settings=safety_settings
+)
 
 ### TG Schedule bot
 
@@ -1138,6 +1144,8 @@ def prioritise(section):
 #time.sleep(60)
 #prioritise("prices")
 
+model_obj = genai.GenerativeModel('gemini-2.5-pro')
+
 def design(section):
     # Получаем JSON с отфильтрованными новостями
     file_name_json = f"{section}.json"
@@ -1173,6 +1181,14 @@ def design(section):
 #time.sleep(60)
 #design("prices")
 #telegram_lists()
+
+model_obj = genai.GenerativeModel(
+    model_name="gemini-2.5-pro",
+    generation_config={
+        "response_mime_type": "application/json",  # ← важно!
+    },
+    safety_settings=safety_settings
+)
 
 def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
@@ -1317,6 +1333,8 @@ def read_top_urls(section, max_chars=3000):
         file_format="json"
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
+
+model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
 if datetime.today().weekday() == 3:
     read_top_urls("world")
