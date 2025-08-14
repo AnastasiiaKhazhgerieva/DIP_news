@@ -1059,11 +1059,11 @@ def create_news_lists(section):
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
-#create_news_lists("world")
+create_news_lists("world")
+time.sleep(60)
+#create_news_lists("rus")
 #time.sleep(60)
-create_news_lists("rus")
-#time.sleep(60)
-#create_news_lists("prices")
+create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
