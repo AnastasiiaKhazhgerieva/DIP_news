@@ -71,7 +71,7 @@ API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска 
 #API_KEY = userdata.get('gemini_api_key') # строка для локального запуска
 genai.configure(api_key=API_KEY)
 model_obj = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
+    model_name="gemini-2.5-pro",
     generation_config={
         "response_mime_type": "application/json",  # ← важно!
     }
@@ -1143,7 +1143,7 @@ def prioritise(section):
 #time.sleep(60)
 #prioritise("prices")
 
-model_obj = genai.GenerativeModel('gemini-1.5-pro')
+model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
 def design(section):
     # Получаем JSON с отфильтрованными новостями
@@ -1182,7 +1182,7 @@ def design(section):
 #telegram_lists()
 
 model_obj = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
+    model_name="gemini-2.5-pro",
     generation_config={
         "response_mime_type": "application/json",  # ← важно!
     }
@@ -1273,12 +1273,12 @@ def choose_top_urls(section, max_chars=1500):
     save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
 
-if datetime.today().weekday() == 3:
-    choose_top_urls("world")
-    time.sleep(60)
-    choose_top_urls("rus")
-    #time.sleep(60)
-    #choose_top_urls("prices")
+#if datetime.today().weekday() == 3:
+#    choose_top_urls("world")
+#    time.sleep(60)
+#    choose_top_urls("rus")
+#    #time.sleep(60)
+#    #choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
 
@@ -1341,12 +1341,12 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-model_obj = genai.GenerativeModel('gemini-1.5-pro')
+model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
-#if datetime.today().weekday() == 3:
-#    read_top_urls("world")
-#    time.sleep(60)
-#    read_top_urls("rus")
+if datetime.today().weekday() == 3:
+    read_top_urls("world")
+    time.sleep(60)
+    read_top_urls("rus")
     #time.sleep(60)
     #read_top_urls("prices")
 
@@ -1418,10 +1418,10 @@ def create_bullets(section):
     save_to_drive(file_name, raw_reply, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
     print(f"{section}: буллиты успешно записаны.")
 
-#if datetime.today().weekday() == 3:
-#    create_bullets("world")
-#    time.sleep(60)
-#    create_bullets("rus")
+if datetime.today().weekday() == 3:
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
     #time.sleep(60)
     #create_bullets("prices")
     #telegram_bullets()
