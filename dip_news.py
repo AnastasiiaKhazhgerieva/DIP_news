@@ -15,7 +15,7 @@ import time
 import datetime
 import os
 import pandas as pd
-import google.generativeai as genai
+#import google.generativeai as genai
 import io
 import base64
 import re
@@ -66,16 +66,30 @@ print("✅ Авторизация от имени:", about["user"]["displayName"
 
 MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на google drive
 
+API_KEY = os.environ.get("PERPLEXITY_API_KEY")  # для workflow
+#API_KEY = userdata.get('perplexity_api_key')   # для локального запуска
+
+if not API_KEY:
+    raise ValueError("Нет переменной окружения PERPLEXITY_API_KEY!")
+
+# Задаем эндпоинт и исходные сообщения
+url = "https://api.perplexity.ai/chat/completions"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
 # gemini api key
-API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска через workflow
+#API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска через workflow
 #API_KEY = userdata.get('gemini_api_key') # строка для локального запуска
-genai.configure(api_key=API_KEY)
-model_obj = genai.GenerativeModel(
-    model_name="gemini-2.5-pro",
-    generation_config={
-        "response_mime_type": "application/json",  # ← важно!
-    }
-)
+#genai.configure(api_key=API_KEY)
+#model_obj = genai.GenerativeModel(
+#    model_name="gemini-2.5-pro",
+#    generation_config={
+#        "response_mime_type": "application/json",  # ← важно!
+#    }
+#)
 
 ### TG Schedule bot
 
@@ -942,7 +956,7 @@ def extract_json(text: str):
     return None
     
 def create_news_lists(section):
-    # Если сегодня не суббота, пробуем прочитать существующий файл <section>.json
+    # Если сегодня не суббота — пробуем прочитать уже сохранённый <section>.json
     if datetime.today().weekday() != 5:  # 5 = Saturday
         try:
             existing_id = find_file_in_drive(f"{section}.json", "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
@@ -958,7 +972,7 @@ def create_news_lists(section):
 
     seen_urls = {item["url"] for item in combined_items if isinstance(item, dict) and "url" in item}
 
-    # Достаём список JSON-файлов и prompt
+    # Список файлов и промпт для секции
     json_files = section_to_files[section]
     prompt_list = lists_prompts.get(section, "")
 
@@ -968,6 +982,7 @@ def create_news_lists(section):
             print(f"Пропускаем '{json_filename}', т.к. не .json-файл.")
             continue
 
+        # Загружаем JSON-файл из Google Drive
         try:
             file_id = find_file_in_drive(json_filename, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
             raw_text = download_text_file(file_id)
@@ -992,84 +1007,88 @@ def create_news_lists(section):
             print(f"JSON '{json_filename}' содержит пустую структуру. Пропускаем.")
             continue
 
+        # Формируем prompt для модели
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
+        prompt_parts = [
+            str(prompt_list),
+            str(news_json_string)
+        ]
 
-        raw_parts = [prompt_list, news_json_string]
-
-        prompt_parts = []
-        for part in raw_parts:
-            if isinstance(part, list):
-                prompt_parts.append("\n".join(part))
-            else:
-                prompt_parts.append(str(part))
-
+        # Запрос к Perplexity API
         try:
-            response = model_obj.generate_content(prompt_parts)
+            payload = {
+                "model": "sonar-pro",
+                "messages": [
+                    {"role": "system", "content": "Отвечай строго в формате JSON."},
+                    {"role": "user", "content": "\n".join(prompt_parts)}
+                ],
+                "temperature": 0.2,
+                "response_mime_type": "application/json",
+                "max_tokens": 1000
+            }
+
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+
+            # Проверка, что модель вернула контент
+            choices = result.get("choices")
+            if not choices or not choices[0].get("message", {}).get("content"):
+                print(f"Модель не вернула ответ для '{json_filename}'. Пропускаем.")
+                continue
+
+            assistant_json_str = choices[0]["message"]["content"]
+
+            # Парсим JSON из строки
+            try:
+                items = json.loads(assistant_json_str)
+            except json.JSONDecodeError as e:
+                print(f"Ответ модели для '{json_filename}' не содержит валидный JSON: {e}")
+                continue
+
+            # Приводим к списку
+            if isinstance(items, dict):
+                items = [items]
+            if not isinstance(items, list):
+                print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
+                continue
+
+            # Фильтруем и добавляем новые новости
+            for entry in items:
+                url_val = entry.get("url")
+                title_val = entry.get("title")
+                if not title_val or not url_val or url_val in seen_urls:
+                    continue
+                seen_urls.add(url_val)
+                combined_items.append({"title": title_val, "url": url_val})
+
         except Exception as e:
             print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
             continue
-
-        if not hasattr(response, "candidates") or not response.candidates:
-            print(f"Модель не вернула кандидатов для '{json_filename}'. Пропускаем.")
-            continue
-
-        raw_reply = response.candidates[0].content if hasattr(response.candidates[0], "content") else None
-        
-        raw_reply = getattr(response.candidates[0], "content", None)
-        if raw_reply is not None and not isinstance(raw_reply, str):
-            # Если это не строка, попробуем получить текст из поля 'text' или 'message' (зависит от API)
-            # Или просто привести к строке
-            try:
-                raw_reply = str(raw_reply)
-            except Exception:
-                raw_reply = None
-
-        if not raw_reply:
-            print(f"Пустой текст кандидата для '{json_filename}'. Пропускаем.")
-            continue
-
-        items = extract_json(raw_reply)
-        if items is None:
-            print(f"Ответ модели для '{json_filename}' не содержит валидный JSON:\n{raw_reply[:200]}… Пропускаем.")
-            continue
-
-        if isinstance(items, dict):
-            items = [items]
-
-        if not isinstance(items, list):
-            print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
-            continue
-
-        for entry in items:
-            url = entry.get("url")
-            title = entry.get("title")
-            if not title or not url or url in seen_urls:
-                continue
-            seen_urls.add(url)
-            combined_items.append({"title": title, "url": url})
 
     if not combined_items:
         print(f"For section '{section}', zero JSONs were successfully processed.")
         return
 
-    # Сохраняем объединённый JSON в файл <section>.json
+    # Сохраняем объединённый результат
     output_file = f"{section}.json"
     save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
-
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
-#create_news_lists("world")
+
+create_news_lists("world")
 time.sleep(60)
-#create_news_lists("rus")
-#time.sleep(60)
-#create_news_lists("prices")
+create_news_lists("rus")
+time.sleep(60)
+create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
-    combined_items = []  # Инициализация списка
+    combined_items = []
 
+    # Загружаем файл с новостями
     try:
         file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
@@ -1084,114 +1103,130 @@ def prioritise(section):
         print(f"❌ Файл {file_name} пустой.")
         return
 
+    # Готовим prompt
     prompt_prioritise = prioritise_prompts.get(section, "")
-    raw_parts = [prompt_prioritise, news_list_raw]
-
-    prompt_parts = []
-    for part in raw_parts:
-        if isinstance(part, list):
-            prompt_parts.append("\n".join(part))
-        else:
-            prompt_parts.append(str(part))
+    prompt_text = "\n".join([str(prompt_prioritise), news_list_raw])
 
     try:
-        response = model_obj.generate_content(prompt_parts)
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {"role": "system", "content": "Отвечай строго в формате JSON."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "temperature": 0.2,
+            "response_mime_type": "application/json",
+            "max_tokens": 1000
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+
+        # Проверка ответа
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"❌ Модель не вернула ответ для '{file_name}'.")
+            return
+
+        assistant_json_str = choices[0]["message"]["content"]
+
+        # Парсим JSON
+        try:
+            items = json.loads(assistant_json_str)
+        except json.JSONDecodeError as e:
+            print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
+            return
+
+        if isinstance(items, dict):
+            items = [items]
+        if not isinstance(items, list):
+            print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+            return
+
+        for entry in items:
+            url_val = entry.get("url")
+            title_val = entry.get("title")
+            if url_val:  # URL обязателен
+                combined_items.append({"title": title_val, "url": url_val})
+
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
-
-    if not hasattr(response, "candidates") or not response.candidates:
-        print(f"❌ Модель не вернула кандидатов для '{file_name}'.")
-        return
-
-    raw_reply = getattr(response.candidates[0], "content", None)
-    if raw_reply is not None and not isinstance(raw_reply, str):
-        try:
-            raw_reply = str(raw_reply)
-        except Exception:
-            raw_reply = None
-
-    if not raw_reply:
-        print(f"❌ Пустой текст кандидата для '{file_name}'.")
-        return
-
-    items = extract_json(raw_reply)
-    if items is None:
-        print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:200]}…")
-        return
-
-    if isinstance(items, dict):
-        items = [items]
-
-    if not isinstance(items, list):
-        print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
-        return
-
-    for entry in items:
-        url = entry.get("url")
-        title = entry.get("title")
-        if url:  # Проверяем, что URL есть
-            combined_items.append({"title": title, "url": url})
 
     # Сохраняем результат
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-#prioritise("world")
-#time.sleep(60)
-#prioritise("rus")
-#time.sleep(60)
-#prioritise("prices")
-
-model_obj = genai.GenerativeModel('gemini-2.5-pro')
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
+prioritise("prices")
 
 def design(section):
-    # Получаем JSON с отфильтрованными новостями
     file_name_json = f"{section}.json"
-    file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
-    news_list_raw = download_text_file(file_id)
+    try:
+        file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"Файл {file_name_json} не найден в папке.")
+        return
+    except Exception as e:
+        print(f"Ошибка при загрузке файла {file_name_json}: {e}")
+        return
 
-    raw_parts = [
-        prompt_design,
-        example,
-        news_list_raw
-    ]
-
+    raw_parts = [prompt_design, example, news_list_raw]
     prompt_parts = []
     for part in raw_parts:
         if isinstance(part, list):
             prompt_parts.append("\n".join(part))
         else:
             prompt_parts.append(str(part))
+    prompt_text = "\n".join(prompt_parts)
 
     try:
-        response = model_obj.generate_content(prompt_parts)
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {"role": "system", "content": "Отвечай лаконично и информативно."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 1500
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"Модель не вернула ответ для '{file_name_json}'.")
+            return
+
+        assistant_text = choices[0]["message"]["content"]
+
+        file_name_txt = f"{section}.txt"
+        save_to_drive(file_name_txt, assistant_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
+        print(f"✅ design({section}) — успешно сохранён файл с текстом.")
+
     except Exception as e:
-        print(f"Error in model.generate_content for '{file_name_json}': {e}.")
+        print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-    # Записываем результат в отдельный .txt файл
-    file_name_txt = f"{section}.txt"
-    save_to_drive(file_name_txt, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
-
-#design("world")
-#time.sleep(60)
-#design("rus")
-#time.sleep(60)
-#design("prices")
+design("world")
+time.sleep(60)
+design("rus")
+time.sleep(60)
+design("prices")
 #telegram_lists()
-
-model_obj = genai.GenerativeModel(
-    model_name="gemini-2.5-pro",
-    generation_config={
-        "response_mime_type": "application/json",  # ← важно!
-    }
-)
 
 def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
-    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Папка с входными данными
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Входная папка в Google Drive
 
+    # Загружаем входной JSON
     try:
         file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
@@ -1206,79 +1241,79 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Файл {file_name} пустой.")
         return
 
+    # Формируем prompt
     prompt_top = top_prompts.get(section, "")
-    raw_parts = [prompt_top, news_list_raw]
-
-    prompt_parts = []
-    for part in raw_parts:
-        if isinstance(part, list):
-            prompt_parts.append("\n".join(part))
-        else:
-            prompt_parts.append(str(part))
+    prompt_text = "\n".join([str(prompt_top), news_list_raw])
 
     try:
-        response = model_obj.generate_content(prompt_parts)
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {"role": "system", "content": "Отвечай строго в формате JSON."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "temperature": 0.2,
+            "response_mime_type": "application/json",
+            "max_tokens": 1000
+        }
+
+        # Запрашиваем Perplexity API
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+
+        # Проверяем, что есть ответ
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"❌ Модель не вернула ответ для '{file_name}'.")
+            return
+
+        assistant_json_str = choices[0]["message"]["content"]
+
+        # Пробуем распарсить JSON
+        try:
+            items = json.loads(assistant_json_str)
+        except json.JSONDecodeError as e:
+            print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
+            return
+
+        # Приводим dict → list
+        if isinstance(items, dict):
+            items = [items]
+
+        if not isinstance(items, list):
+            print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+            return
+
+        # Обрезаем суммарную длину, если надо
+        combined_items = []
+        current_len = 0
+        for entry in items:
+            url_val = entry.get("url")
+            title_val = entry.get("title")
+            json_entry = {"title": title_val, "url": url_val}
+            entry_len = len(json.dumps(json_entry, ensure_ascii=False))
+            if current_len + entry_len > max_chars:
+                break
+            if url_val:
+                combined_items.append(json_entry)
+                current_len += entry_len
+
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
-        
-    candidate = response.candidates[0]
-    
-    if not candidate.content.parts:
-        print(f"❌ Ответ модели не содержит частей (parts) для '{file_name}'.")
-        # Можно вывести весь response для отладки
-        try:
-            print(f"🔹 Полный ответ (упрощённо): {str(response)[:500]}")
-        except:
-            pass
-        return
-    
-    # Проверяем кандидатов
-    if not hasattr(response, "candidates") or not response.candidates:
-        print(f"❌ Модель не вернула кандидатов для '{file_name}'.")
-        return
 
-
-    # ✅ ПРАВИЛЬНОЕ ИЗВЛЕЧЕНИЕ ТЕКСТА
-    raw_reply = candidate.content.parts[0].text.strip()
-
-    if not raw_reply:
-        print(f"❌ Пустой текст кандидата для '{file_name}'.")
-        return
-
-    # Теперь пытаемся извлечь JSON из текста
-    items = extract_json(raw_reply)
-    if items is None:
-        print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:500]}…")
-        return
-        output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
-        save_to_drive(file_name, raw_reply, output_folder_id, file_format="json")
-
-    if isinstance(items, dict):
-        items = [items]
-
-    if not isinstance(items, list):
-        print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
-        return
-
-    combined_items = []
-    for entry in items:
-        url = entry.get("url")
-        title = entry.get("title")
-        if url:
-            combined_items.append({"title": title, "url": url})
-
-    # Сохраняем результат в другую папку
+    # Сохраняем результат в выходную папку
     output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
     save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
 
-#if datetime.today().weekday() == 3:
-#    choose_top_urls("world")
-#    time.sleep(60)
-#    choose_top_urls("rus")
-#    #time.sleep(60)
-#    #choose_top_urls("prices")
+if datetime.today().weekday() == 3:
+    choose_top_urls("world")
+    time.sleep(60)
+    choose_top_urls("rus")
+    time.sleep(60)
+    choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
 
@@ -1341,15 +1376,12 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-model_obj = genai.GenerativeModel('gemini-2.5-pro')
-
-#if datetime.today().weekday() == 3:
-#    read_top_urls("world")
-#    read_top_urls("rus")
-#    read_top_urls("prices")
+if datetime.today().weekday() == 3:
+    read_top_urls("world")
+    read_top_urls("rus")
+    read_top_urls("prices")
 
 def create_bullets(section):
-    # Загружаем JSON с текстами топ-новостей
     list_file = f"{section}.json"
     try:
         file_id = find_file_in_drive(list_file, "13KDzhQ0Y6GzKzEaMZggHoF38bglN358r")
@@ -1358,68 +1390,50 @@ def create_bullets(section):
         print(f"Ошибка загрузки файла {list_file}: {e}")
         return
 
-    # Если пришёл JSON-строкой, делаем красиво
+    # Если пришёл JSON, делаем красиво (отступы для читаемости)
     try:
         parsed_json = json.loads(list_content)
         pretty_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
     except json.JSONDecodeError:
         pretty_json = str(list_content)
 
-    # Берём соответствующий prompt
     prompt_bullets = bullets_prompts.get(section, "")
-
-    # Формируем prompt_parts
-    raw_parts = [prompt_bullets, pretty_json]
-
-    prompt_parts = []
-    for part in raw_parts:
-        if isinstance(part, list):
-            prompt_parts.append("\n".join(part))
-        else:
-            prompt_parts.append(str(part))
+    prompt_text = "\n".join([str(prompt_bullets), pretty_json])
 
     try:
-        response = model_obj.generate_content(prompt_parts)
-    except Exception as e:
-        print(f"Error in model.generate_content for {section}: {e}")
-        return
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {"role": "system", "content": "Отвечай лаконично и информативно."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 1500
+        }
 
-    # Обработка ответа модели — проверяем наличие кандидатов
-    if not hasattr(response, "candidates") or not response.candidates:
-        print(f"Модель не вернула кандидатов для {section}.")
-        return
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
 
-    candidate = response.candidates[0]
-    # Иногда текст в content, иногда в text — пытаемся достать
-    raw_reply = getattr(candidate, "content", None) or getattr(candidate, "text", None)
-
-    if raw_reply is None:
-        print(f"Кандидат без текста ответа для {section}.")
-        return
-
-    if not isinstance(raw_reply, str):
-        try:
-            raw_reply = str(raw_reply)
-        except Exception:
-            print(f"Не удалось привести ответ модели к строке для {section}.")
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"Модель не вернула ответ для {section}.")
             return
 
-    # Проверка на пустой ответ
-    if not raw_reply.strip():
-        print(f"Пустой ответ модели для {section}.")
+        assistant_text = choices[0]["message"]["content"]
+
+        file_name = f"report_{section}.txt"
+        save_to_drive(file_name, assistant_text, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
+        print(f"{section}: буллиты успешно записаны.")
+
+    except Exception as e:
+        print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-    # Если нужно, можно тут попытаться валидировать JSON или текст, если ожидается конкретный формат
-    # Для буллитов обычно это просто текст, поэтому достаточно проверки
-
-    file_name = f"report_{section}.txt"
-    save_to_drive(file_name, raw_reply, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
-    print(f"{section}: буллиты успешно записаны.")
-
-#if datetime.today().weekday() == 3:
-#    create_bullets("world")
-#    time.sleep(60)
-#    create_bullets("rus")
-    #time.sleep(60)
-    #create_bullets("prices")
+if datetime.today().weekday() == 3:
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
+    create_bullets("prices")
     #telegram_bullets()
