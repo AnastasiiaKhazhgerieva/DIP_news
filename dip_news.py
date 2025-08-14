@@ -1059,11 +1059,11 @@ def create_news_lists(section):
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
-create_news_lists("world")
+#create_news_lists("world")
 time.sleep(60)
 #create_news_lists("rus")
 #time.sleep(60)
-create_news_lists("prices")
+#create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
@@ -1344,11 +1344,9 @@ def read_top_urls(section, max_chars=3000):
 model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
 #if datetime.today().weekday() == 3:
-#    read_top_urls("world")
-#    time.sleep(60)
-#    read_top_urls("rus")
-    #time.sleep(60)
-    #read_top_urls("prices")
+    read_top_urls("world")
+    read_top_urls("rus")
+    read_top_urls("prices")
 
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
