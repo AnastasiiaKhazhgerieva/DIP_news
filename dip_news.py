@@ -1251,6 +1251,8 @@ def choose_top_urls(section, max_chars=1500):
     if items is None:
         print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:500]}…")
         return
+        output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
+        save_to_drive(file_name, raw_reply, output_folder_id, file_format="json")
 
     if isinstance(items, dict):
         items = [items]
