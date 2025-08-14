@@ -71,7 +71,7 @@ API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска 
 #API_KEY = userdata.get('gemini_api_key') # строка для локального запуска
 genai.configure(api_key=API_KEY)
 model_obj = genai.GenerativeModel(
-    model_name="gemini-2.5-pro",
+    model_name="gemini-1.5-pro",
     generation_config={
         "response_mime_type": "application/json",  # ← важно!
     }
@@ -1143,7 +1143,7 @@ def prioritise(section):
 #time.sleep(60)
 #prioritise("prices")
 
-model_obj = genai.GenerativeModel('gemini-2.5-pro')
+model_obj = genai.GenerativeModel('gemini-1.5-pro')
 
 def design(section):
     # Получаем JSON с отфильтрованными новостями
@@ -1182,7 +1182,7 @@ def design(section):
 #telegram_lists()
 
 model_obj = genai.GenerativeModel(
-    model_name="gemini-2.5-pro",
+    model_name="gemini-1.5-pro",
     generation_config={
         "response_mime_type": "application/json",  # ← важно!
     }
@@ -1341,7 +1341,7 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-model_obj = genai.GenerativeModel('gemini-2.5-pro')
+model_obj = genai.GenerativeModel('gemini-1.5-pro')
 
 #if datetime.today().weekday() == 3:
 #    read_top_urls("world")
