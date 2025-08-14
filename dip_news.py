@@ -1069,11 +1069,11 @@ def prioritise(section):
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-prioritise("world")
-time.sleep(60)
-prioritise("rus")
-time.sleep(60)
-prioritise("prices")
+#prioritise("world")
+#time.sleep(60)
+#prioritise("rus")
+#time.sleep(60)
+#prioritise("prices")
 
 def design(section):
     # Получаем JSON с отфильтрованными новостями
@@ -1104,12 +1104,12 @@ def design(section):
     file_name_txt = f"{section}.txt"
     save_to_drive(file_name_txt, response.text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
 
-#design("world")
-#time.sleep(60)
-#design("rus")
-#time.sleep(60)
-#design("prices")
-#telegram_lists()
+design("world")
+time.sleep(60)
+design("rus")
+time.sleep(60)
+design("prices")
+telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
 
