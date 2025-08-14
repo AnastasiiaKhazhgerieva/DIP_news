@@ -1343,7 +1343,7 @@ def read_top_urls(section, max_chars=3000):
 
 model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
-#if datetime.today().weekday() == 3:
+if datetime.today().weekday() == 3:
     read_top_urls("world")
     read_top_urls("rus")
     read_top_urls("prices")
