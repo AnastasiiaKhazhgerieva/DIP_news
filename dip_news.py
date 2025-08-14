@@ -1223,33 +1223,6 @@ def choose_top_urls(section, max_chars=1500):
         return
         
     candidate = response.candidates[0]
-
-    # Проверяем, не заблокирован ли ответ
-    if hasattr(candidate, "finish_reason") and candidate.finish_reason:
-        reason = candidate.finish_reason
-        if reason == "SAFETY":
-            print(f"❌ Ответ для '{file_name}' был заблокирован из-за политик безопасности (SAFETY).")
-        elif reason == "RECITATION":
-            print(f"❌ Ответ для '{file_name}' прерван (RECITATION).")
-        elif reason == "FINISH_REASON_UNSPECIFIED":
-            print(f"❌ Неизвестная причина завершения для '{file_name}'.")
-        else:
-            FINISH_REASON_NAMES = {
-                0: "FINISH_REASON_UNSPECIFIED",
-                1: "STOP",
-                2: "MAX_TOKENS",
-                3: "SAFETY",
-                4: "RECITATION",
-                5: "INVALID_ARGUMENT",
-            }
-            reason_name = FINISH_REASON_NAMES.get(int(reason), f"UNKNOWN ({reason})")
-            print(f"❌ Причина завершения: {reason_name}")
-        return
-    
-    # Проверяем content
-    if not hasattr(candidate, "content") or not candidate.content:
-        print(f"❌ Кандидат не содержит поля 'content' для '{file_name}'.")
-        return
     
     if not candidate.content.parts:
         print(f"❌ Ответ модели не содержит частей (parts) для '{file_name}'.")
