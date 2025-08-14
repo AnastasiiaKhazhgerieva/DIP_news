@@ -1112,9 +1112,8 @@ def design(section):
 #telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
-
     file_name = f"{section}.json"
-    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Папка с входными данными
 
     try:
         file_id = find_file_in_drive(file_name, folder_id)
@@ -1131,7 +1130,6 @@ def choose_top_urls(section, max_chars=1500):
         return
 
     prompt_top = top_prompts.get(section, "")
-
     raw_parts = [prompt_top, news_list_raw]
 
     prompt_parts = []
@@ -1141,7 +1139,7 @@ def choose_top_urls(section, max_chars=1500):
         else:
             prompt_parts.append(str(part))
 
-     try:
+    try:
         response = model_obj.generate_content(prompt_parts)
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
@@ -1174,16 +1172,19 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
         return
 
+    # Инициализация списка для выбранных URL
+    combined_items = []
+
     for entry in items:
         url = entry.get("url")
         title = entry.get("title")
-        if url:  # Проверяем, что URL есть
+        if url:  # Только если URL присутствует
             combined_items.append({"title": title, "url": url})
-    
-    # Сохраняем результат
-    folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
-    save_to_drive(file_name, combined_items, folder_id, file_format="json")
-    print(f"✅ top({section}) — сохранён корректный JSON.")
+
+    # Сохраняем результат в другую папку
+    output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
+    save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
+    print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
 
 if datetime.today().weekday() == 3:
     choose_top_urls("world")
