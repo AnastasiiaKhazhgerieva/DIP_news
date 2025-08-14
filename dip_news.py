@@ -1061,7 +1061,7 @@ def create_news_lists(section):
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 #create_news_lists("world")
 #time.sleep(60)
-#create_news_lists("rus")
+create_news_lists("rus")
 #time.sleep(60)
 #create_news_lists("prices")
 
@@ -1343,10 +1343,10 @@ def read_top_urls(section, max_chars=3000):
 
 model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
-if datetime.today().weekday() == 3:
-    read_top_urls("world")
-    time.sleep(60)
-    read_top_urls("rus")
+#if datetime.today().weekday() == 3:
+#    read_top_urls("world")
+#    time.sleep(60)
+#    read_top_urls("rus")
     #time.sleep(60)
     #read_top_urls("prices")
 
@@ -1418,10 +1418,10 @@ def create_bullets(section):
     save_to_drive(file_name, raw_reply, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
     print(f"{section}: буллиты успешно записаны.")
 
-if datetime.today().weekday() == 3:
-    create_bullets("world")
-    time.sleep(60)
-    create_bullets("rus")
+#if datetime.today().weekday() == 3:
+#    create_bullets("world")
+#    time.sleep(60)
+#    create_bullets("rus")
     #time.sleep(60)
     #create_bullets("prices")
     #telegram_bullets()
