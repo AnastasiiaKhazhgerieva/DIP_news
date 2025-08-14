@@ -1234,6 +1234,14 @@ def choose_top_urls(section, max_chars=1500):
         elif reason == "FINISH_REASON_UNSPECIFIED":
             print(f"❌ Неизвестная причина завершения для '{file_name}'.")
         else:
+            FINISH_REASON_NAMES = {
+                0: "FINISH_REASON_UNSPECIFIED",
+                1: "STOP",
+                2: "MAX_TOKENS",
+                3: "SAFETY",
+                4: "RECITATION",
+                5: "INVALID_ARGUMENT",
+            }
             reason_name = FINISH_REASON_NAMES.get(int(reason), f"UNKNOWN ({reason})")
             print(f"❌ Причина завершения: {reason_name}")
         return
