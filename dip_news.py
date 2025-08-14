@@ -1141,41 +1141,56 @@ def choose_top_urls(section, max_chars=1500):
         else:
             prompt_parts.append(str(part))
 
-    try:
+     try:
         response = model_obj.generate_content(prompt_parts)
-        response_text = getattr(response, "text", "").strip()
     except Exception as e:
-        print(f"❌ Ошибка генерации от модели для '{file_name}': {e}")
+        print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
 
-    # Убираем markdown-обертки, если есть
-    if response_text.startswith("```json"):
-        response_text = response_text[7:]
-    if response_text.endswith("```"):
-        response_text = response_text[:-3]
-    response_text = response_text.strip()
-
-    # Пытаемся распарсить ответ как JSON
-    try:
-        filtered_list = json.loads(response_text)
-        if not isinstance(filtered_list, list):
-            raise ValueError(f"Ожидался список, а пришло {type(filtered_list)}")
-    except Exception as e:
-        print(f"⚠️ Не удалось распарсить JSON в prioritise({section}): {e}")
-        save_to_drive(file_name.replace(".json", "_prioritise_error.txt"), response_text, folder_id, file_format="txt")
+    if not hasattr(response, "candidates") or not response.candidates:
+        print(f"❌ Модель не вернула кандидатов для '{file_name}'.")
         return
 
+    raw_reply = getattr(response.candidates[0], "content", None)
+    if raw_reply is not None and not isinstance(raw_reply, str):
+        try:
+            raw_reply = str(raw_reply)
+        except Exception:
+            raw_reply = None
+
+    if not raw_reply:
+        print(f"❌ Пустой текст кандидата для '{file_name}'.")
+        return
+
+    items = extract_json(raw_reply)
+    if items is None:
+        print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:200]}…")
+        return
+
+    if isinstance(items, dict):
+        items = [items]
+
+    if not isinstance(items, list):
+        print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+        return
+
+    for entry in items:
+        url = entry.get("url")
+        title = entry.get("title")
+        if url:  # Проверяем, что URL есть
+            combined_items.append({"title": title, "url": url})
+    
     # Сохраняем результат
     folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
-    save_to_drive(file_name, filtered_list, folder_id, file_format="json")
+    save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ top({section}) — сохранён корректный JSON.")
 
 if datetime.today().weekday() == 3:
     choose_top_urls("world")
     time.sleep(60)
     choose_top_urls("rus")
-    time.sleep(60)
-    choose_top_urls("prices")
+    #time.sleep(60)
+    #choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
 
@@ -1242,8 +1257,8 @@ if datetime.today().weekday() == 3:
     read_top_urls("world")
     time.sleep(60)
     read_top_urls("rus")
-    time.sleep(60)
-    read_top_urls("prices")
+    #time.sleep(60)
+    #read_top_urls("prices")
 
 def create_bullets(section):
     # Загружаем JSON с текстами топ-новостей
@@ -1317,6 +1332,6 @@ if datetime.today().weekday() == 3:
     create_bullets("world")
     time.sleep(60)
     create_bullets("rus")
-    time.sleep(60)
-    create_bullets("prices")
-    telegram_bullets()
+    #time.sleep(60)
+    #create_bullets("prices")
+    #telegram_bullets()
