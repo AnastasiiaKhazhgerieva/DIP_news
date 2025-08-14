@@ -74,8 +74,7 @@ model_obj = genai.GenerativeModel(
     model_name="gemini-2.5-pro",
     generation_config={
         "response_mime_type": "application/json",  # ← важно!
-    },
-    safety_settings=safety_settings
+    }
 )
 
 ### TG Schedule bot
@@ -1186,8 +1185,7 @@ model_obj = genai.GenerativeModel(
     model_name="gemini-2.5-pro",
     generation_config={
         "response_mime_type": "application/json",  # ← важно!
-    },
-    safety_settings=safety_settings
+    }
 )
 
 def choose_top_urls(section, max_chars=1500):
