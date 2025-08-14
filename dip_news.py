@@ -70,7 +70,7 @@ MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на goo
 API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска через workflow
 #API_KEY = userdata.get('gemini_api_key') # строка для локального запуска
 genai.configure(api_key=API_KEY)
-model_obj = genai.GenerativeModel('gemini-2.5=pro')
+model_obj = genai.GenerativeModel('gemini-2.5-pro')
 
 ### TG Schedule bot
 
