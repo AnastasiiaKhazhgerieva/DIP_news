@@ -1234,7 +1234,7 @@ def choose_top_urls(section, max_chars=1500):
         elif reason == "FINISH_REASON_UNSPECIFIED":
             print(f"❌ Неизвестная причина завершения для '{file_name}'.")
         else:
-            print(f"❌ Ответ прерван по причине: {reason}")
+            print(f"❌ Ответ прерван по причине: {reason_name}")
         return
     
     # Проверяем content
