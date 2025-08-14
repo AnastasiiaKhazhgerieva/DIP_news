@@ -70,7 +70,7 @@ MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на goo
 API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска через workflow
 #API_KEY = userdata.get('gemini_api_key') # строка для локального запуска
 genai.configure(api_key=API_KEY)
-model_obj = genai.GenerativeModel('gemini-2.0')
+model_obj = genai.GenerativeModel('gemini-2.5=pro')
 
 ### TG Schedule bot
 
@@ -1313,10 +1313,10 @@ def create_bullets(section):
     save_to_drive(file_name, raw_reply, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
     print(f"{section}: буллиты успешно записаны.")
 
-#if datetime.today().weekday() == 3:
-#    create_bullets("world")
-#    time.sleep(60)
-#    create_bullets("rus")
-#    time.sleep(60)
+if datetime.today().weekday() == 3:
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
     create_bullets("prices")
     telegram_bullets()
