@@ -846,33 +846,96 @@ example = 'Пример верного оформления:\r\n1.\tРосста
 
 def extract_json(text: str):
     """
-    Пытается найти в строке `text` JSON-список или JSON-объект и вернуть его как Python-структуру.
-    Сначала ищет JSON-массив [...], если не находит — JSON-объект {...}.
-    Если подходящего фрагмента нет или он невалиден — возвращает None.
+    Извлекает валидный JSON (объект или массив) из строки.
+    Приоритет:
+    1. Кодовые блоки: ```json [...]``` или ```[...]```
+    2. Самый длинный валидный фрагмент, начинающийся с [ или { и заканчивающийся на ] или }
+    3. Перебор всех возможных подстрок (на случай битого форматирования)
+
+    Возвращает: dict | list | None
     """
-    # 1) Пытаемся найти JSON-массив: ищем первую '[' и последнюю ']'
-    start = text.find('[')
-    end = text.rfind(']')
-    if 0 <= start < end:
-        candidate = text[start:end+1]
+    if not isinstance(text, str):
+        return None
+
+    text = text.strip()
+
+    # Шаг 1: Ищем кодовые блоки (наиболее надёжный способ)
+    code_block_match = re.search(r"```(?:json|)\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
+    if code_block_match:
+        candidate = code_block_match.group(1).strip()
         try:
             return json.loads(candidate)
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON в кодовом блоке невалиден: {e}")
+            # Можно залогировать text[:500] для отладки
 
-    # 2) Если не найден массив, пробуем найти JSON-объект: первую '{' и последнюю '}'
-    start = text.find('{')
-    end = text.rfind('}')
-    if 0 <= start < end:
+    # Шаг 2: Ищем самый длинный возможный JSON-массив или объект
+    candidates = []
+
+    # Находим все пары [..] и {..}
+    brackets = []
+
+    for i, char in enumerate(text):
+        if char in '[{':
+            brackets.append((i, char))
+        elif char in ']}':
+            brackets.append((i, char))
+
+    # Собираем возможные валидные диапазоны
+    stack = []
+    ranges = []
+    for pos, char in brackets:
+        if char in '[{':
+            stack.append((pos, char))
+        elif char == ']' and stack and stack[-1][1] == '[':
+            start, _ = stack.pop()
+            ranges.append((start, pos))
+        elif char == '}' and stack and stack[-1][1] == '{':
+            start, _ = stack.pop()
+            ranges.append((start, pos))
+
+    # Сортируем по длине (сначала самые длинные)
+    ranges.sort(key=lambda x: x[1] - x[0], reverse=True)
+
+    for start, end in ranges:
         candidate = text[start:end+1]
         try:
-            return json.loads(candidate)
+            result = json.loads(candidate)
+            # Дополнительная проверка: хотя бы один ключ или элемент
+            if isinstance(result, (dict, list)) and len(result) >= 0:
+                return result  # Возвращаем первый валидный (самый длинный)
         except json.JSONDecodeError:
+            continue
+
+    # Шаг 3: Фолбэк — попробовать найти хотя бы что-то похожее
+    # Удаляем экранирование, если строка была "заэкранирована"
+    if text.startswith('"') and text.endswith('"'):
+        try:
+            unescaped = text[1:-1].encode().decode('unicode_escape')
+            if (unescaped.startswith('{') and unescaped.endswith('}')) or \
+               (unescaped.startswith('[') and unescaped.endswith(']')):
+                return json.loads(unescaped)
+        except Exception:
             pass
 
-    # 3) Если ни то, ни другое не получилось — отдадим None
+    # Шаг 4: Полный фолбэк — перебор всех подстрок (очень медленно, только если всё сломалось)
+    # Это крайний случай
+    for start in range(len(text)):
+        if text[start] not in '[{':
+            continue
+        for end in range(len(text), start, -1):
+            if text[end-1] not in ']}':
+                continue
+            fragment = text[start:end]
+            if len(fragment) < 3:
+                continue
+            try:
+                return json.loads(fragment)
+            except json.JSONDecodeError:
+                continue
+
     return None
-
+    
 def create_news_lists(section):
     # Если сегодня не суббота, пробуем прочитать существующий файл <section>.json
     if datetime.today().weekday() != 5:  # 5 = Saturday
@@ -1115,8 +1178,6 @@ def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Папка с входными данными
 
-    combined_items = []  # Инициализация списка
-
     try:
         file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
@@ -1147,26 +1208,27 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
 
+    # Проверяем кандидатов
     if not hasattr(response, "candidates") or not response.candidates:
         print(f"❌ Модель не вернула кандидатов для '{file_name}'.")
         return
 
-    raw_reply = getattr(response.candidates[0], "content", None)
-    if raw_reply is not None and not isinstance(raw_reply, str):
-        try:
-            raw_reply = str(raw_reply)
-        except Exception:
-            raw_reply = None
+    candidate = response.candidates[0]
+    if not candidate.content or not candidate.content.parts:
+        print(f"❌ Ответ модели пустой или не содержит частей для '{file_name}'.")
+        return
+
+    # ✅ ПРАВИЛЬНОЕ ИЗВЛЕЧЕНИЕ ТЕКСТА
+    raw_reply = candidate.content.parts[0].text.strip()
 
     if not raw_reply:
         print(f"❌ Пустой текст кандидата для '{file_name}'.")
         return
 
+    # Теперь пытаемся извлечь JSON из текста
     items = extract_json(raw_reply)
     if items is None:
-        print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:200]}…")
-        output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
-        save_to_drive(file_name, raw_reply, output_folder_id, file_format="json")
+        print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON:\n{raw_reply[:500]}…")
         return
 
     if isinstance(items, dict):
@@ -1176,10 +1238,11 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
         return
 
+    combined_items = []
     for entry in items:
         url = entry.get("url")
         title = entry.get("title")
-        if url:  # Проверяем, что URL есть
+        if url:
             combined_items.append({"title": title, "url": url})
 
     # Сохраняем результат в другую папку
