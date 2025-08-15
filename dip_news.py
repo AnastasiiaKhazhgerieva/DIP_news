@@ -1164,6 +1164,42 @@ prioritise("rus")
 time.sleep(60)
 prioritise("prices")
 
+def design_wo_llm(section):
+    file_name_json = f"{section}.json"
+    try:
+        file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"Файл {file_name_json} не найден в папке.")
+        return
+    except Exception as e:
+        print(f"Ошибка при загрузке файла {file_name_json}: {e}")
+        return
+
+    # Парсим входной JSON
+    try:
+        news_items = json.loads(news_list_raw)
+    except json.JSONDecodeError as e:
+        print(f"Ошибка парсинга JSON: {e}")
+        return
+
+    # Формируем нумерованный список, как в примере
+    formatted_lines = []
+    for i, item in enumerate(news_items, 1):
+        title = item.get("title", "").strip()
+        url = item.get("url", "").strip()
+        if not title or not url:
+            continue
+        line = f"{i}.\t{title}\n{url}"
+        formatted_lines.append(line)
+    
+    # Склеиваем результаты с переводом строки между ними
+    result_text = "\r\n".join(formatted_lines) + "\r\n" if formatted_lines else ""
+
+    file_name_txt = f"{section}.txt"
+    save_to_drive(file_name_txt, result_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
+    print(f"✅ design({section}) — успешно сохранён файл с текстом.")
+
 def design(section):
     file_name_json = f"{section}.json"
     try:
@@ -1215,12 +1251,14 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-design("world")
-time.sleep(60)
-design("rus")
-time.sleep(60)
-design("prices")
-#telegram_lists()
+for section in ["world", "rus", "prices"]:
+    try:
+        design_wo_llm(section)
+    except Exception as e:
+        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+        design(section)
+        time.sleep(60)
+telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
@@ -1436,4 +1474,4 @@ if datetime.today().weekday() == 3:
     create_bullets("rus")
     time.sleep(60)
     create_bullets("prices")
-    #telegram_bullets()
+    telegram_bullets()
