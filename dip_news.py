@@ -678,7 +678,7 @@ def fetch_autostat(dates, output_file,
 #print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # Parameters
-days_before = 3
+days_before = 1
 dates = get_last_dates(days_before)
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
@@ -1263,7 +1263,7 @@ for section in ["world", "rus", "prices"]:
         print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
         design(section)
         time.sleep(60)
-#telegram_lists()
+telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
