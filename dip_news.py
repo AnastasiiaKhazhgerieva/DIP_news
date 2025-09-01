@@ -1021,7 +1021,7 @@ def create_news_lists(section):
             payload = {
                 "model": "sonar-pro",
                 "messages": [
-                    {"role": "system", "content": "Отвечай строго в формате JSON."},
+                    {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                     {"role": "user", "content": "\n".join(prompt_parts)}
                 ],
                 "temperature": 0.2,
@@ -1113,7 +1113,7 @@ def prioritise(section):
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {"role": "system", "content": "Отвечай строго в формате JSON."},
+                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.2,
@@ -1227,7 +1227,7 @@ def design(section):
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {"role": "system", "content": "Отвечай лаконично и информативно."},
+                {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
@@ -1289,7 +1289,7 @@ def choose_top_urls(section, max_chars=1500):
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {"role": "system", "content": "Отвечай строго в формате JSON."},
+                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.2,
@@ -1444,7 +1444,7 @@ def create_bullets(section):
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {"role": "system", "content": "Отвечай лаконично и информативно."},
+                {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
