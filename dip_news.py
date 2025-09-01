@@ -1026,7 +1026,8 @@ def create_news_lists(section):
                 ],
                 "temperature": 0.2,
                 "response_mime_type": "application/json",
-                "max_tokens": 1000
+                "max_tokens": 1000,
+                "disable_search": True
             }
 
             response = requests.post(url, headers=headers, json=payload)
@@ -1118,7 +1119,8 @@ def prioritise(section):
             ],
             "temperature": 0.2,
             "response_mime_type": "application/json",
-            "max_tokens": 1000
+            "max_tokens": 1000,
+            "disable_search": True
         }
 
         response = requests.post(url, headers=headers, json=payload)
@@ -1231,7 +1233,8 @@ def design(section):
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500
+            "max_tokens": 1500,
+            "disable_search": True
         }
 
         response = requests.post(url, headers=headers, json=payload)
@@ -1294,7 +1297,8 @@ def choose_top_urls(section, max_chars=1500):
             ],
             "temperature": 0.2,
             "response_mime_type": "application/json",
-            "max_tokens": 1000
+            "max_tokens": 1000,
+            "disable_search": True
         }
 
         # Запрашиваем Perplexity API
@@ -1448,7 +1452,8 @@ def create_bullets(section):
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500
+            "max_tokens": 1500,
+            "disable_search": True
         }
 
         response = requests.post(url, headers=headers, json=payload)
