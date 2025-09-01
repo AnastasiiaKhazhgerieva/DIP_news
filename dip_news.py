@@ -1448,12 +1448,11 @@ def create_bullets(section):
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
+                {"role": "system", "content": "Отвечай лаконично и информативно."},
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500,
-            "disable_search": True
+            "max_tokens": 1500
         }
 
         response = requests.post(url, headers=headers, json=payload)
