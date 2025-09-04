@@ -1165,11 +1165,11 @@ def prioritise(section):
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-#prioritise("world")
-#time.sleep(60)
+prioritise("world")
+time.sleep(60)
 prioritise("rus")
-#time.sleep(60)
-#prioritise("prices")
+time.sleep(60)
+prioritise("prices")
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
@@ -1259,13 +1259,13 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-#for section in ["world", "rus", "prices"]:
-#    try:
-#        design_wo_llm(section)
-#    except Exception as e:
-#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-#        design(section)
-#        time.sleep(60)
+for section in ["world", "rus", "prices"]:
+    try:
+        design_wo_llm(section)
+    except Exception as e:
+        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+        design(section)
+        time.sleep(60)
 #telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
