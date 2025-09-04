@@ -1122,18 +1122,24 @@ def prioritise(section):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
+        
         # Проверка ответа
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
             print(f"❌ Модель не вернула ответ для '{file_name}'.")
             return
-        assistant_json_str = choices[0]["message"]["content"]
-        # Парсим JSON
+                assistant_json_str = choices[0]["message"]["content"]
+
+        # Отладка - вывод ответа модели перед парсингом JSON
+        print("DEBUG: Ответ модели (первые 1000 символов):")
+        print(assistant_json_str[:1000])
+
         try:
             items = json.loads(assistant_json_str)
         except json.JSONDecodeError as e:
             print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
             return
+            
         if isinstance(items, dict):
             items = [items]
         if not isinstance(items, list):
