@@ -1122,31 +1122,33 @@ def prioritise(section):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-        
+
         # Проверка ответа
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
             print(f"❌ Модель не вернула ответ для '{file_name}'.")
             return
-                assistant_json_str = choices[0]["message"]["content"]
-
+        
+        assistant_json_str = choices[0]["message"]["content"]
         # Отладка - вывод ответа модели перед парсингом JSON
         print("DEBUG: Ответ модели (первые 1000 символов):")
         print(assistant_json_str[:1000])
-
+        
         try:
             items = json.loads(assistant_json_str)
         except json.JSONDecodeError as e:
             print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
             return
-            
+
         if isinstance(items, dict):
             items = [items]
         if not isinstance(items, list):
             print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
             return
+        
         # Сохраняем полный ответ в отдельную папку
         save_to_drive(file_name, items, temp_folder_id, file_format="json")
+
         # Обработка с grade
         if all(isinstance(entry, dict) and "grade" in entry for entry in items):
             items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
@@ -1155,9 +1157,11 @@ def prioritise(section):
         else:
             # Нет grade — берем первые 40 записей с валидным url
             combined_items = [{"title": e.get("title"), "url": e.get("url")} for e in items if e.get("url")][:40]
+
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
+
     # Сохраняем итоговый результат в исходную папку
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
