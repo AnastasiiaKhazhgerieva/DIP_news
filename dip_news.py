@@ -1165,11 +1165,11 @@ def prioritise(section):
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-prioritise("world")
-time.sleep(60)
-prioritise("rus")
-time.sleep(60)
-prioritise("prices")
+#prioritise("world")
+#time.sleep(60)
+#prioritise("rus")
+#time.sleep(60)
+#prioritise("prices")
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
