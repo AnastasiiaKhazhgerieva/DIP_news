@@ -64,7 +64,7 @@ about = drive_service.about().get(fields="user").execute()
 print("✅ Авторизация от имени:", about["user"]["displayName"], about["user"]["emailAddress"])
 
 
-MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на google drive
+MY_FOLDER_ID = "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F" # папка reports на google drive
 
 API_KEY = os.environ.get("PERPLEXITY_API_KEY")  # для workflow
 #API_KEY = userdata.get('perplexity_api_key')   # для локального запуска
@@ -125,7 +125,7 @@ def telegram_bullets():
 
 ### Functions for google drive
 
-def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
+def find_file_in_drive(file_name: str, folder_id = "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F") -> str:
     try:
         resp = drive_service.files().list(
             q=(
@@ -276,7 +276,7 @@ def fetch_kom(rubrics, dates, output_file,
             except Exception as e:
                 print(f"[ERROR] {e} when fetching {url}")
 
-    save_to_drive(output_file, all_items, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, all_items, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
     print(f"Saved Kommersant data to {output_file}")
 
 
@@ -300,7 +300,7 @@ def fetch_ved(dates, output_file,
         except Exception as e:
             all_news.append({"error": str(e)})
 
-    save_to_drive(output_file, all_news, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, all_news, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
     print(f"Saved Vedomosti data to {output_file}")
 
 # RBC scraper
@@ -402,7 +402,7 @@ def fetch_rbc(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, unique, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
     print(f"Saved RBC data to {output_file}")
 
 # Agro investor scraper - периодически ломается, поэтому пусть будет в коде вариант с отладкой
@@ -488,7 +488,7 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
             "link": url
         })
 
-    save_to_drive(output_file, news_list, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, news_list, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
     print(f"💾 Saved {len(news_list)} news items to {output_file}")
 
 
@@ -538,7 +538,7 @@ def fetch_rg(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, unique, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
     print(f"Saved RG data to {output_file}")
 
 # RIA scraper
@@ -585,7 +585,7 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, unique, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
 
     print(f"Saved RIA data to {output_file}")
 
@@ -669,7 +669,7 @@ def fetch_autostat(dates, output_file,
                 })
                 seen_urls.add(full_url)
 
-    save_to_drive(output_file, all_collected, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, all_collected, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
 
     print(f"Saved Autostat data to {output_file}")
 
@@ -743,21 +743,21 @@ section_to_files = {
 
 ###
 ### news lists
-file_id = find_file_in_drive("lists_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("lists_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     lists_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     lists_world = ""
 
-file_id = find_file_in_drive("lists_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("lists_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     lists_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     lists_rus = ""
 
-file_id = find_file_in_drive("lists_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("lists_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     lists_prices = download_text_file(file_id)
 except Exception as e:
@@ -771,21 +771,21 @@ lists_prompts = {
 }
 
 ### prioritise
-file_id = find_file_in_drive("prioritise_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("prioritise_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     prioritise_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     prioritise_world = ""
 
-file_id = find_file_in_drive("prioritise_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("prioritise_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     prioritise_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     prioritise_rus = ""
 
-file_id = find_file_in_drive("prioritise_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("prioritise_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     prioritise_prices = download_text_file(file_id)
 except Exception as e:
@@ -800,7 +800,7 @@ prioritise_prompts = {
 
 ### design
 
-file_id = find_file_in_drive("design.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("design.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     prompt_design = download_text_file(file_id)
 except Exception as e:
@@ -808,21 +808,21 @@ except Exception as e:
     prompt_design = ""
 
 ### top
-file_id = find_file_in_drive("top_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("top_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     top_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     top_world = ""
 
-file_id = find_file_in_drive("top_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("top_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     top_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     top_rus = ""
 
-file_id = find_file_in_drive("top_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("top_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     top_prices = download_text_file(file_id)
 except Exception as e:
@@ -836,21 +836,21 @@ top_prompts = {
 }
 
 ### bullets
-file_id = find_file_in_drive("bullets_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("bullets_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     bullets_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     bullets_world = ""
 
-file_id = find_file_in_drive("bullets_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("bullets_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     bullets_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     bullets_rus = ""
 
-file_id = find_file_in_drive("bullets_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
+file_id = find_file_in_drive("bullets_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
 try:
     bullets_prices = download_text_file(file_id)
 except Exception as e:
@@ -961,7 +961,7 @@ def create_news_lists(section):
     # Если сегодня не суббота — пробуем прочитать уже сохранённый <section>.json
     if datetime.today().weekday() != 5:  # 5 = Saturday
         try:
-            existing_id = find_file_in_drive(f"{section}.json", "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+            existing_id = find_file_in_drive(f"{section}.json", "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
             existing_text = download_text_file(existing_id)
             try:
                 combined_items = json.loads(existing_text)
@@ -986,7 +986,7 @@ def create_news_lists(section):
 
         # Загружаем JSON-файл из Google Drive
         try:
-            file_id = find_file_in_drive(json_filename, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+            file_id = find_file_in_drive(json_filename, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
             raw_text = download_text_file(file_id)
         except FileNotFoundError:
             print(f"Файл '{json_filename}' не найден. Пропускаем.")
@@ -1075,7 +1075,7 @@ def create_news_lists(section):
 
     # Сохраняем объединённый результат
     output_file = f"{section}.json"
-    save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    save_to_drive(output_file, combined_items, my_folder="15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
@@ -1088,8 +1088,8 @@ create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
-    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
-    temp_folder_id = "12I1CB-RDDTkHUTk1wxD7qOT9bZWA8ssF"
+    folder_id = "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm"
+    temp_folder_id = "1VXj9CWsSXgNdKDsn1XTux2bqjBYUXnzr"
     combined_items = []
     # Загружаем файл с новостями
     try:
@@ -1176,7 +1176,7 @@ time.sleep(60)
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
     try:
-        file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+        file_id = find_file_in_drive(file_name_json, "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"Файл {file_name_json} не найден в папке.")
@@ -1206,13 +1206,13 @@ def design_wo_llm(section):
     result_text = "\r\n".join(formatted_lines) + "\r\n" if formatted_lines else ""
 
     file_name_txt = f"{section}.txt"
-    save_to_drive(file_name_txt, result_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
+    save_to_drive(file_name_txt, result_text, "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F", file_format="txt")
     print(f"✅ design({section}) — успешно сохранён файл с текстом.")
 
 def design(section):
     file_name_json = f"{section}.json"
     try:
-        file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+        file_id = find_file_in_drive(file_name_json, "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"Файл {file_name_json} не найден в папке.")
@@ -1254,7 +1254,7 @@ def design(section):
         assistant_text = choices[0]["message"]["content"]
 
         file_name_txt = f"{section}.txt"
-        save_to_drive(file_name_txt, assistant_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
+        save_to_drive(file_name_txt, assistant_text, "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F", file_format="txt")
         print(f"✅ design({section}) — успешно сохранён файл с текстом.")
 
     except Exception as e:
@@ -1272,7 +1272,7 @@ telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
-    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Входная папка в Google Drive
+    folder_id = "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm"  # Входная папка в Google Drive
 
     # Загружаем входной JSON
     try:
@@ -1353,7 +1353,7 @@ def choose_top_urls(section, max_chars=1500):
         return
 
     # Сохраняем результат в выходную папку
-    output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
+    output_folder_id = "1IHxfXPjsykIAIpVBN1F8MMRTarQwWJF5"
     save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
 
@@ -1387,8 +1387,8 @@ def read_top_urls(section, max_chars=3000):
     # Имя файла с топ ссылками для секции, например "world.json"
     file_name = f"{section}.json"
     
-    # Находим ID файла в папке с топами (17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V)
-    file_id = find_file_in_drive(file_name, folder_id="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V")
+    # Находим ID файла в папке с топами (1IHxfXPjsykIAIpVBN1F8MMRTarQwWJF5)
+    file_id = find_file_in_drive(file_name, folder_id="1IHxfXPjsykIAIpVBN1F8MMRTarQwWJF5")
     
     # Скачиваем содержимое файла — список словарей с title и url
     json_text = download_text_file(file_id)
@@ -1416,11 +1416,11 @@ def read_top_urls(section, max_chars=3000):
         except Exception as e:
             print(f"Ошибка при обработке {url}: {e}")
 
-    # Сохраняем результат в другую папку с текстами (13KDzhQ0Y6GzKzEaMZggHoF38bglN358r)
+    # Сохраняем результат в другую папку с текстами (17jD6tSxK6x64v_nXG63r5lbEAf74FYSY)
     save_to_drive(
         file_name,
         results,
-        my_folder="13KDzhQ0Y6GzKzEaMZggHoF38bglN358r",
+        my_folder="17jD6tSxK6x64v_nXG63r5lbEAf74FYSY",
         file_format="json"
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
@@ -1433,7 +1433,7 @@ if datetime.today().weekday() == 3:
 def create_bullets(section):
     list_file = f"{section}.json"
     try:
-        file_id = find_file_in_drive(list_file, "13KDzhQ0Y6GzKzEaMZggHoF38bglN358r")
+        file_id = find_file_in_drive(list_file, "17jD6tSxK6x64v_nXG63r5lbEAf74FYSY")
         list_content = download_text_file(file_id)
     except Exception as e:
         print(f"Ошибка загрузки файла {list_file}: {e}")
@@ -1472,7 +1472,7 @@ def create_bullets(section):
         assistant_text = choices[0]["message"]["content"]
 
         file_name = f"report_{section}.txt"
-        save_to_drive(file_name, assistant_text, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
+        save_to_drive(file_name, assistant_text, my_folder="1UzIu11Qj0ZQ0zBbvGSR7-oowq-8upvIM", file_format="txt")
         print(f"{section}: буллиты успешно записаны.")
 
     except Exception as e:
