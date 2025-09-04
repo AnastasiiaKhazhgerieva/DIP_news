@@ -1116,7 +1116,6 @@ def prioritise(section):
             ],
             "temperature": 0.2,
             "response_mime_type": "application/json",
-            "max_tokens": 1000,
             "disable_search": True
         }
         response = requests.post(url, headers=headers, json=payload)
@@ -1131,8 +1130,8 @@ def prioritise(section):
         
         assistant_json_str = choices[0]["message"]["content"]
         # Отладка - вывод ответа модели перед парсингом JSON
-        print("DEBUG: Ответ модели (первые 1000 символов):")
-        print(assistant_json_str[:1000])
+        print("DEBUG: Ответ модели (первые 3000 символов):")
+        print(assistant_json_str[:3000])
         
         try:
             items = json.loads(assistant_json_str)
