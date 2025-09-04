@@ -1,5 +1,8 @@
 name: Sandbox DIP News
 
+on:
+  workflow_dispatch:
+
 jobs:
   run-dip-news:
     runs-on: ubuntu-latest
