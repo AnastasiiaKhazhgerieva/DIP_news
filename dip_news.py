@@ -1096,8 +1096,8 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-create_news_lists("world")
-time.sleep(60)
+#create_news_lists("world")
+#time.sleep(60)
 #create_news_lists("rus")
 #time.sleep(60)
 #create_news_lists("prices")
@@ -1182,8 +1182,8 @@ def prioritise(section):
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-prioritise("world")
-time.sleep(60)
+#prioritise("world")
+#time.sleep(60)
 # prioritise("rus")
 #time.sleep(60)
 #prioritise("prices")
@@ -1370,15 +1370,14 @@ def choose_top_urls(section, max_chars=1500):
     save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
 
-if datetime.today().weekday() == 3:
-    choose_top_urls("world")
-    time.sleep(60)
-    choose_top_urls("rus")
-    time.sleep(60)
-    choose_top_urls("prices")
+#if datetime.today().weekday() == 3:
+choose_top_urls("world")
+time.sleep(60)
+#    choose_top_urls("rus")
+#    time.sleep(60)
+#    choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
-
     def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
         paragraphs = []
         for p in soup.find_all('p'):
@@ -1397,13 +1396,17 @@ def read_top_urls(section, max_chars=3000):
             combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
         return combined_text
 
+    import json
+    import requests
+    from bs4 import BeautifulSoup
+
     # Имя файла с топ ссылками для секции, например "world.json"
     file_name = f"{section}.json"
-    
+
     # Находим ID файла в папке с топами (17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V)
     file_id = find_file_in_drive(file_name, folder_id="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V")
-    
-    # Скачиваем содержимое файла — список словарей с title и url
+
+    # Скачиваем содержимое файла — список словарей с title, url и темой
     json_text = download_text_file(file_id)
     try:
         items = json.loads(json_text)
@@ -1415,6 +1418,7 @@ def read_top_urls(section, max_chars=3000):
     for item in items:
         url = item.get("url") or item.get("URL")
         title = item.get("title", "")
+        theme = item.get("theme") or item.get("тема") or "undefined"
         if not url:
             continue
         try:
@@ -1424,6 +1428,7 @@ def read_top_urls(section, max_chars=3000):
             results.append({
                 "title": title,
                 "url": url,
+                "theme": theme,
                 "text": page_text
             })
         except Exception as e:
@@ -1438,10 +1443,10 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 3:
-    read_top_urls("world")
-    read_top_urls("rus")
-    read_top_urls("prices")
+#if datetime.today().weekday() == 3:
+read_top_urls("world")
+#    read_top_urls("rus")
+#    read_top_urls("prices")
 
 def create_bullets(section):
     list_file = f"{section}.json"
@@ -1492,10 +1497,10 @@ def create_bullets(section):
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-if datetime.today().weekday() == 3:
-    create_bullets("world")
-    time.sleep(60)
-    create_bullets("rus")
-    time.sleep(60)
-    create_bullets("prices")
-    telegram_bullets()
+#if datetime.today().weekday() == 3:
+create_bullets("world")
+#    time.sleep(60)
+ #   create_bullets("rus")
+  #  time.sleep(60)
+   # create_bullets("prices")
+    #telegram_bullets()
