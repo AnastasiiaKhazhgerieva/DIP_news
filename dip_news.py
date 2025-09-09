@@ -863,7 +863,7 @@ bullets_prompts = {
         "prices": bullets_prices
 }
 
-example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366\r\n 1 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847\r\n1 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n 2 \r\n 4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n 2 \r\n'
+example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366\r\n day: 2025-09-06 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847\r\n day: 2025-08-12 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n day: 2025-03-10 \r\n 4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n day: 2025-07-06 \r\n'
 
 def extract_json(text: str):
     """
