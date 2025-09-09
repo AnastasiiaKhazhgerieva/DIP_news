@@ -863,7 +863,7 @@ bullets_prompts = {
         "prices": bullets_prices
 }
 
-example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n'
+example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366\r\n 1 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847\r\n1 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n 2 \r\n 4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n 2 \r\n'
 
 def extract_json(text: str):
     """
@@ -1097,7 +1097,7 @@ def create_news_lists(section):
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
 create_news_lists("world")
-#time.sleep(60)
+time.sleep(60)
 #create_news_lists("rus")
 #time.sleep(60)
 #create_news_lists("prices")
@@ -1137,7 +1137,6 @@ def prioritise(section):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-
         # Проверка ответа
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
@@ -1154,7 +1153,6 @@ def prioritise(section):
         except json.JSONDecodeError as e:
             print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
             return
-
         if isinstance(items, dict):
             items = [items]
         if not isinstance(items, list):
@@ -1163,26 +1161,29 @@ def prioritise(section):
         
         # Сохраняем полный ответ в отдельную папку
         save_to_drive(file_name, items, temp_folder_id, file_format="json")
-
         # Обработка с grade
         if all(isinstance(entry, dict) and "grade" in entry for entry in items):
             items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
             items_top40 = items_sorted[:40]
-            combined_items = [{"title": e.get("title"), "url": e.get("url")} for e in items_top40 if e.get("url")]
+            combined_items = [
+                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                for e in items_top40 if e.get("url")
+            ]
         else:
             # Нет grade — берем первые 40 записей с валидным url
-            combined_items = [{"title": e.get("title"), "url": e.get("url")} for e in items if e.get("url")][:40]
-
+            combined_items = [
+                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                for e in items if e.get("url")
+            ][:40]
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
-
     # Сохраняем итоговый результат в исходную папку
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-# prioritise("world")
-# time.sleep(60)
+prioritise("world")
+time.sleep(60)
 # prioritise("rus")
 #time.sleep(60)
 #prioritise("prices")
@@ -1200,30 +1201,32 @@ def design_wo_llm(section):
     except Exception as e:
         print(f"Ошибка при загрузке файла {file_name_json}: {e}")
         return
-
     # Парсим входной JSON
     try:
         news_items = json.loads(news_list_raw)
     except json.JSONDecodeError as e:
         print(f"Ошибка парсинга JSON: {e}")
         return
-
-    # Формируем нумерованный список, как в примере
+    # Формируем нумерованный список, как в примере, с сохранением day
     formatted_lines = []
     for i, item in enumerate(news_items, 1):
         title = item.get("title", "").strip()
         url = item.get("url", "").strip()
+        day = item.get("day")  # сохраняем поле day, если есть
         if not title or not url:
             continue
-        line = f"{i}.\t{title}\n{url}"
+        if day is not None:
+            line = f"{i}.\t{title} (day: {day})\n{url}"
+        else:
+            line = f"{i}.\t{title}\n{url}"
         formatted_lines.append(line)
-    
+
     # Склеиваем результаты с переводом строки между ними
     result_text = "\r\n".join(formatted_lines) + "\r\n" if formatted_lines else ""
-
     file_name_txt = f"{section}.txt"
     save_to_drive(file_name_txt, result_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
     print(f"✅ design({section}) — успешно сохранён файл с текстом.")
+
 
 def design(section):
     file_name_json = f"{section}.json"
@@ -1236,7 +1239,6 @@ def design(section):
     except Exception as e:
         print(f"Ошибка при загрузке файла {file_name_json}: {e}")
         return
-
     raw_parts = [prompt_design, example, news_list_raw]
     prompt_parts = []
     for part in raw_parts:
@@ -1245,7 +1247,6 @@ def design(section):
         else:
             prompt_parts.append(str(part))
     prompt_text = "\n".join(prompt_parts)
-
     try:
         payload = {
             "model": "sonar-pro",
@@ -1257,25 +1258,21 @@ def design(section):
             "max_tokens": 1500,
             "disable_search": True
         }
-
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
             print(f"Модель не вернула ответ для '{file_name_json}'.")
             return
-
         assistant_text = choices[0]["message"]["content"]
-
         file_name_txt = f"{section}.txt"
         save_to_drive(file_name_txt, assistant_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
         print(f"✅ design({section}) — успешно сохранён файл с текстом.")
-
     except Exception as e:
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
+
 
 for section in ["world", "rus", "prices"]:
     try:
