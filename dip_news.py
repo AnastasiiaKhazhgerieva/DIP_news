@@ -1029,7 +1029,6 @@ def create_news_lists(section):
                 ],
                 "temperature": 0.2,
                 "response_mime_type": "application/json",
-                "max_tokens": 1000,
                 "disable_search": True
             }
             response = requests.post(url, headers=headers, json=payload)
@@ -1255,7 +1254,6 @@ def design(section):
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500,
             "disable_search": True
         }
         response = requests.post(url, headers=headers, json=payload)
@@ -1485,7 +1483,6 @@ def create_bullets(section):
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500
         }
 
         response = requests.post(url, headers=headers, json=payload)
