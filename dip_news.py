@@ -958,8 +958,10 @@ def extract_json(text: str):
     return None
     
 def create_news_lists(section):
+    current_weekday_num = datetime.today().weekday()
+
     # Если сегодня не суббота — пробуем прочитать уже сохранённый <section>.json
-    if datetime.today().weekday() != 5:  # 5 = Saturday
+    if current_weekday_num != 5:  # 5 = Saturday
         try:
             existing_id = find_file_in_drive(f"{section}.json", "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
             existing_text = download_text_file(existing_id)
@@ -972,6 +974,7 @@ def create_news_lists(section):
     else:
         combined_items = []
 
+    # Обновляем seen_urls и подготавливаем set для сохранённых URL
     seen_urls = {item["url"] for item in combined_items if isinstance(item, dict) and "url" in item}
 
     # Список файлов и промпт для секции
@@ -1029,7 +1032,6 @@ def create_news_lists(section):
                 "max_tokens": 1000,
                 "disable_search": True
             }
-
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
@@ -1042,33 +1044,46 @@ def create_news_lists(section):
 
             assistant_json_str = choices[0]["message"]["content"]
 
-            # Парсим JSON из строки
+            # Парсим JSON из строки (ожидается список словарей с ключами 'url' и 'title')
             try:
                 items = json.loads(assistant_json_str)
             except json.JSONDecodeError as e:
                 print(f"Ответ модели для '{json_filename}' не содержит валидный JSON: {e}")
                 continue
 
-            # Приводим к списку
+            # Приводим к списку, если словарь
             if isinstance(items, dict):
                 items = [items]
+
             if not isinstance(items, list):
                 print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
                 continue
 
-            # Фильтруем и добавляем новые новости
-            current_weekday_num = datetime.today().weekday()
+            # Фильтруем и добавляем новые новости с дополнительным полем day
             for entry in items:
                 url_val = entry.get("url")
                 title_val = entry.get("title")
                 if not title_val or not url_val or url_val in seen_urls:
                     continue
                 seen_urls.add(url_val)
-                combined_items.append({"title": f"{current_weekday_num}{title_val}", "url": url_val})
+                combined_items.append({
+                    "title": title_val,
+                    "url": url_val,
+                    "day": current_weekday_num  # добавляем номер дня недели
+                })
 
         except Exception as e:
             print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
             continue
+
+    if not combined_items:
+        print(f"For section '{section}', zero JSONs were successfully processed.")
+        return
+
+    # Сохраняем объединённый результат с полем day в каждом элементе
+    output_file = f"{section}.json"
+    save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
     if not combined_items:
         print(f"For section '{section}', zero JSONs were successfully processed.")
