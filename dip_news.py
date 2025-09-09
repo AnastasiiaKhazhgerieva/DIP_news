@@ -1284,8 +1284,6 @@ def design(section):
 #telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
-    import json
-    import requests
 
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Входная папка в Google Drive
@@ -1324,7 +1322,6 @@ def choose_top_urls(section, max_chars=1500):
             ],
             "temperature": 0.2,
             "response_mime_type": "application/json",
-            "max_tokens": 1000,
             "disable_search": True
         }
         # Запрашиваем Perplexity API
