@@ -869,40 +869,29 @@ def extract_json(text: str):
     """
     Извлекает валидный JSON (объект или массив) из строки.
     Приоритет:
-    1. Кодовые блоки: ```json [...]``` или ```[...]```
+    1. Кодовые блоки: `````` или ``````
     2. Самый длинный валидный фрагмент, начинающийся с [ или { и заканчивающийся на ] или }
     3. Перебор всех возможных подстрок (на случай битого форматирования)
-
     Возвращает: dict | list | None
     """
     if not isinstance(text, str):
         return None
-
     text = text.strip()
-
     # Шаг 1: Ищем кодовые блоки (наиболее надёжный способ)
-    code_block_match = re.search(r"```(?:json|)\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
+    code_block_match = re.search(r"``````", text, re.IGNORECASE)
     if code_block_match:
         candidate = code_block_match.group(1).strip()
         try:
             return json.loads(candidate)
         except json.JSONDecodeError as e:
             print(f"❌ JSON в кодовом блоке невалиден: {e}")
-            # Можно залогировать text[:500] для отладки
-
     # Шаг 2: Ищем самый длинный возможный JSON-массив или объект
-    candidates = []
-
-    # Находим все пары [..] и {..}
     brackets = []
-
     for i, char in enumerate(text):
         if char in '[{':
             brackets.append((i, char))
         elif char in ']}':
             brackets.append((i, char))
-
-    # Собираем возможные валидные диапазоны
     stack = []
     ranges = []
     for pos, char in brackets:
@@ -914,22 +903,16 @@ def extract_json(text: str):
         elif char == '}' and stack and stack[-1][1] == '{':
             start, _ = stack.pop()
             ranges.append((start, pos))
-
-    # Сортируем по длине (сначала самые длинные)
     ranges.sort(key=lambda x: x[1] - x[0], reverse=True)
-
     for start, end in ranges:
         candidate = text[start:end+1]
         try:
             result = json.loads(candidate)
-            # Дополнительная проверка: хотя бы один ключ или элемент
             if isinstance(result, (dict, list)) and len(result) >= 0:
-                return result  # Возвращаем первый валидный (самый длинный)
+                return result
         except json.JSONDecodeError:
             continue
-
-    # Шаг 3: Фолбэк — попробовать найти хотя бы что-то похожее
-    # Удаляем экранирование, если строка была "заэкранирована"
+    # Шаг 3: Фолбэк — попытка убрать экранирование
     if text.startswith('"') and text.endswith('"'):
         try:
             unescaped = text[1:-1].encode().decode('unicode_escape')
@@ -938,9 +921,7 @@ def extract_json(text: str):
                 return json.loads(unescaped)
         except Exception:
             pass
-
-    # Шаг 4: Полный фолбэк — перебор всех подстрок (очень медленно, только если всё сломалось)
-    # Это крайний случай
+    # Шаг 4: Крайний фолбэк — перебор подстрок (медленно)
     for start in range(len(text)):
         if text[start] not in '[{':
             continue
@@ -954,7 +935,6 @@ def extract_json(text: str):
                 return json.loads(fragment)
             except json.JSONDecodeError:
                 continue
-
     return None
     
 def create_news_lists(section):
@@ -1282,9 +1262,6 @@ def design(section):
 #telegram_lists()
 
 def choose_top_urls(section):
-    import json
-    import requests
-
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
     try:
@@ -1296,12 +1273,14 @@ def choose_top_urls(section):
     except Exception as e:
         print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
         return
+
     if not news_list_raw.strip():
         print(f"❌ Файл {file_name} пустой.")
         return
-
+    
     prompt_top = top_prompts.get(section, "")
     prompt_text = "\n".join([str(prompt_top), news_list_raw])
+    
     try:
         payload = {
             "model": "sonar-pro",
@@ -1322,56 +1301,64 @@ def choose_top_urls(section):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-        
-        # Сохраняем полный ответ модели в test.txt в указанную папку
-        full_response_text = json.dumps(result, ensure_ascii=False, indent=2)
-        save_to_drive(
-            "test.txt",
-            full_response_text,
-            my_folder="1kc5xJw_ojYovX5Eon03RB-LsktRuKJEh",
-            file_format="txt"
-        )
 
         choices = result.get("choices")
         if not choices:
             print("❌ В ответе API нет поля 'choices'.")
             return
+
         first_choice = choices[0]
         message = first_choice.get("message", {})
         content = message.get("content")
         finish_reason = first_choice.get("finish_reason")
         print(f"Finish reason: {finish_reason}")
+
         if content is None or content.strip() == "":
             print("❌ Модель вернула пустой ответ (content пустой).")
             return
-        assistant_json_str = content
-        try:
-            items = json.loads(assistant_json_str)
-        except json.JSONDecodeError as e:
-            print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
-            print("=== Начало ответа модели ===")
-            print(assistant_json_str)
-            print("=== Конец ответа модели ===")
+        
+        # Используем функцию extract_json для безопасного извлечения JSON
+        data = extract_json(content)
+        if data is None:
+            print("❌ Не удалось извлечь валидный JSON из ответа модели.")
+            print("=== Ответ модели ===")
+            print(content)
+            print("===================")
             return
-        if isinstance(items, dict):
-            items = [items]
-        if not isinstance(items, list):
-            print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+        
+        if not isinstance(data, dict):
+            print(f"❌ Ожидался JSON-объект (словарь), а получен {type(data)}")
             return
-        combined_items = []
-        for entry in items:
-            url_val = entry.get("url")
-            title_val = entry.get("title")
-            theme_val = entry.get("theme") or entry.get("тема") or "undefined"
-            json_entry = {"title": title_val, "url": url_val, "theme": theme_val}
-            if url_val and title_val:
-                combined_items.append(json_entry)
+        
+        valid_output = []
+        for theme, news_list in data.items():
+            if not isinstance(news_list, list):
+                print(f"❌ Для темы '{theme}' ожидался список, а получен {type(news_list)}")
+                return
+            for item in news_list:
+                if not isinstance(item, dict):
+                    print(f"❌ Элемент новости должен быть объектом, а получен {type(item)}")
+                    return
+                title = item.get("title")
+                url_ = item.get("url")
+                if title and url_:
+                    valid_output.append({
+                        "theme": theme,
+                        "title": title,
+                        "url": url_
+                    })
+
+        if not valid_output:
+            print("❌ Итоговый JSON пуст.")
+            return
+
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
+
     output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
-    save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
-    print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
+    save_to_drive(file_name, valid_output, output_folder_id, file_format="json")
+    print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 #if datetime.today().weekday() == 3:
 choose_top_urls("world")
