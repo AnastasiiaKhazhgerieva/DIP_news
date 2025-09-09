@@ -1057,13 +1057,14 @@ def create_news_lists(section):
                 continue
 
             # Фильтруем и добавляем новые новости
+            current_weekday_num = datetime.today().weekday()
             for entry in items:
                 url_val = entry.get("url")
                 title_val = entry.get("title")
                 if not title_val or not url_val or url_val in seen_urls:
                     continue
                 seen_urls.add(url_val)
-                combined_items.append({"title": "_" + title_val, "url": url_val})
+                combined_items.append({"title": f"{current_weekday_num}{title_val}", "url": url_val})
 
         except Exception as e:
             print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
@@ -1165,7 +1166,7 @@ def prioritise(section):
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-prioritise("world")
+# prioritise("world")
 # time.sleep(60)
 # prioritise("rus")
 #time.sleep(60)
