@@ -1274,16 +1274,19 @@ def design(section):
         return
 
 
-for section in ["world", "rus", "prices"]:
-    try:
-        design_wo_llm(section)
-    except Exception as e:
-        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-        design(section)
-        time.sleep(60)
+#for section in ["world", "rus", "prices"]:
+#    try:
+#        design_wo_llm(section)
+#    except Exception as e:
+#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+#        design(section)
+#        time.sleep(60)
 #telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
+    import json
+    import requests
+
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Входная папка в Google Drive
 
@@ -1310,15 +1313,20 @@ def choose_top_urls(section, max_chars=1500):
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
-                {"role": "user", "content": prompt_text}
+                {
+                    "role": "system",
+                    "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."
+                },
+                {
+                    "role": "user",
+                    "content": prompt_text
+                }
             ],
             "temperature": 0.2,
             "response_mime_type": "application/json",
             "max_tokens": 1000,
             "disable_search": True
         }
-
         # Запрашиваем Perplexity API
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
@@ -1342,7 +1350,6 @@ def choose_top_urls(section, max_chars=1500):
         # Приводим dict → list
         if isinstance(items, dict):
             items = [items]
-
         if not isinstance(items, list):
             print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
             return
@@ -1350,14 +1357,20 @@ def choose_top_urls(section, max_chars=1500):
         # Обрезаем суммарную длину, если надо
         combined_items = []
         current_len = 0
+
         for entry in items:
             url_val = entry.get("url")
             title_val = entry.get("title")
-            json_entry = {"title": title_val, "url": url_val}
+            theme_val = entry.get("theme") or entry.get("тема") or "undefined"
+            json_entry = {
+                "title": title_val,
+                "url": url_val,
+                "theme": theme_val
+            }
             entry_len = len(json.dumps(json_entry, ensure_ascii=False))
             if current_len + entry_len > max_chars:
                 break
-            if url_val:
+            if url_val and title_val:
                 combined_items.append(json_entry)
                 current_len += entry_len
 
@@ -1444,7 +1457,7 @@ def read_top_urls(section, max_chars=3000):
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
 #if datetime.today().weekday() == 3:
-read_top_urls("world")
+#read_top_urls("world")
 #    read_top_urls("rus")
 #    read_top_urls("prices")
 
@@ -1498,7 +1511,7 @@ def create_bullets(section):
         return
 
 #if datetime.today().weekday() == 3:
-create_bullets("world")
+#create_bullets("world")
 #    time.sleep(60)
  #   create_bullets("rus")
   #  time.sleep(60)
