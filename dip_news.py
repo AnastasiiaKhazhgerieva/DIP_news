@@ -1282,11 +1282,12 @@ def design(section):
 #telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
+    import json
+    import requests
 
     file_name = f"{section}.json"
-    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"  # Входная папка в Google Drive
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
 
-    # Загружаем входной JSON
     try:
         file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
@@ -1301,7 +1302,6 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Файл {file_name} пустой.")
         return
 
-    # Формируем prompt
     prompt_top = top_prompts.get(section, "")
     prompt_text = "\n".join([str(prompt_top), news_list_raw])
 
@@ -1311,7 +1311,7 @@ def choose_top_urls(section, max_chars=1500):
             "messages": [
                 {
                     "role": "system",
-                    "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."
+                    "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете — выбирай только из приложенного списка."
                 },
                 {
                     "role": "user",
@@ -1322,46 +1322,53 @@ def choose_top_urls(section, max_chars=1500):
             "response_mime_type": "application/json",
             "disable_search": True
         }
-        # Запрашиваем Perplexity API
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
 
-        # Проверяем, что есть ответ
+        print("=== Полный ответ API ===")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print("========================")
+
         choices = result.get("choices")
-        if not choices or not choices[0].get("message", {}).get("content"):
-            print(f"❌ Модель не вернула ответ для '{file_name}'.")
+        if not choices:
+            print("❌ В ответе API нет поля 'choices'.")
             return
 
-        assistant_json_str = choices[0]["message"]["content"]
+        first_choice = choices[0]
+        message = first_choice.get("message", {})
+        content = message.get("content")
+        finish_reason = first_choice.get("finish_reason")
 
-        # Пробуем распарсить JSON
+        print(f"Finish reason: {finish_reason}")
+        if content is None or content.strip() == "":
+            print("❌ Модель вернула пустой ответ (content пустой).")
+            return
+
+        assistant_json_str = content
+
         try:
             items = json.loads(assistant_json_str)
         except json.JSONDecodeError as e:
             print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
+            print("=== Начало ответа модели ===")
+            print(assistant_json_str)
+            print("=== Конец ответа модели ===")
             return
 
-        # Приводим dict → list
         if isinstance(items, dict):
             items = [items]
         if not isinstance(items, list):
             print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
             return
 
-        # Обрезаем суммарную длину, если надо
         combined_items = []
         current_len = 0
-
         for entry in items:
             url_val = entry.get("url")
             title_val = entry.get("title")
             theme_val = entry.get("theme") or entry.get("тема") or "undefined"
-            json_entry = {
-                "title": title_val,
-                "url": url_val,
-                "theme": theme_val
-            }
+            json_entry = {"title": title_val, "url": url_val, "theme": theme_val}
             entry_len = len(json.dumps(json_entry, ensure_ascii=False))
             if current_len + entry_len > max_chars:
                 break
@@ -1373,7 +1380,6 @@ def choose_top_urls(section, max_chars=1500):
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
 
-    # Сохраняем результат в выходную папку
     output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
     save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
