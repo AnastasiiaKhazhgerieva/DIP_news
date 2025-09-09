@@ -1325,7 +1325,7 @@ def choose_top_urls(section):
         result = response.json()
 
         print("=== Полный ответ API ===")
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(result)
         print("========================")
 
         choices = result.get("choices")
