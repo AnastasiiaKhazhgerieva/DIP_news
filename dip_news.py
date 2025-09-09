@@ -1326,8 +1326,13 @@ def choose_top_urls(section):
             print("===================")
             return
         
+        # Если пришёл список, оборачиваем в словарь с темой 'unknown'
+        if isinstance(data, list):
+            print("⚠️ JSON пришёл в виде списка, оборачиваем в словарь с темой 'unknown'")
+            data = {"unknown": data}
+        
         if not isinstance(data, dict):
-            print(f"❌ Ожидался JSON-объект (словарь), а получен {type(data)}")
+            print(f"❌ Ожидался JSON-объект (словарь) после преобразования, а получен {type(data)}")
             return
         
         valid_output = []
