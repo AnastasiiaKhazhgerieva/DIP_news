@@ -1281,9 +1281,7 @@ def design(section):
 #        time.sleep(60)
 #telegram_lists()
 
-def choose_top_urls(section, max_chars=1500):
-    import json
-    import requests
+def choose_top_urls(section):
 
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
@@ -1363,18 +1361,13 @@ def choose_top_urls(section, max_chars=1500):
             return
 
         combined_items = []
-        current_len = 0
         for entry in items:
             url_val = entry.get("url")
             title_val = entry.get("title")
             theme_val = entry.get("theme") or entry.get("тема") or "undefined"
             json_entry = {"title": title_val, "url": url_val, "theme": theme_val}
-            entry_len = len(json.dumps(json_entry, ensure_ascii=False))
-            if current_len + entry_len > max_chars:
-                break
             if url_val and title_val:
                 combined_items.append(json_entry)
-                current_len += entry_len
 
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
@@ -1409,10 +1402,6 @@ def read_top_urls(section, max_chars=3000):
         if len(combined_text) > max_chars:
             combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
         return combined_text
-
-    import json
-    import requests
-    from bs4 import BeautifulSoup
 
     # Имя файла с топ ссылками для секции, например "world.json"
     file_name = f"{section}.json"
