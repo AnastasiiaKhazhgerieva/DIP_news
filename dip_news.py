@@ -691,20 +691,20 @@ rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabot
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
-fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
-fetch_ved(dates_ved, "ved.json")
+#fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
+#fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+#fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
+#fetch_ved(dates_ved, "ved.json")
 
-fetch_rbc(rubrics_rbc, dates, "rbc.json")
-try:
-    fetch_agro(dates, "agro.json")
-except Exception as e:
+#fetch_rbc(rubrics_rbc, dates, "rbc.json")
+#try:
+#    fetch_agro(dates, "agro.json")
+#except Exception as e:
 
-    pass
-fetch_rg(rubrics_rg, dates, "rg.json")
-fetch_ria(dates, "ria.json")
-fetch_autostat(dates, "autostat.json", rubrics_auto)
+#    pass
+#fetch_rg(rubrics_rg, dates, "rg.json")
+#fetch_ria(dates, "ria.json")
+#fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -1063,7 +1063,7 @@ def create_news_lists(section):
                 if not title_val or not url_val or url_val in seen_urls:
                     continue
                 seen_urls.add(url_val)
-                combined_items.append({"title": title_val, "url": url_val})
+                combined_items.append({"title": "_" + title_val, "url": url_val})
 
         except Exception as e:
             print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
@@ -1081,10 +1081,10 @@ def create_news_lists(section):
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
 create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
+#time.sleep(60)
+#create_news_lists("rus")
+#time.sleep(60)
+#create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
@@ -1166,12 +1166,12 @@ def prioritise(section):
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 prioritise("world")
-time.sleep(60)
-prioritise("rus")
-time.sleep(60)
-prioritise("prices")
+# time.sleep(60)
+# prioritise("rus")
+#time.sleep(60)
+#prioritise("prices")
 
-time.sleep(60)
+#time.sleep(60)
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
@@ -1268,7 +1268,7 @@ for section in ["world", "rus", "prices"]:
         print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
         design(section)
         time.sleep(60)
-telegram_lists()
+#telegram_lists()
 
 def choose_top_urls(section, max_chars=1500):
     file_name = f"{section}.json"
