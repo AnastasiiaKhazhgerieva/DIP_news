@@ -1443,7 +1443,7 @@ def read_top_urls(section, max_chars=3000):
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
 #if datetime.today().weekday() == 3:
-#read_top_urls("world")
+read_top_urls("world")
 #    read_top_urls("rus")
 #    read_top_urls("prices")
 
@@ -1496,7 +1496,7 @@ def create_bullets(section):
         return
 
 #if datetime.today().weekday() == 3:
-#create_bullets("world")
+create_bullets("world")
 #    time.sleep(60)
  #   create_bullets("rus")
   #  time.sleep(60)
