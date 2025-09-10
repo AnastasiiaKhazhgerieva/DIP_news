@@ -1262,6 +1262,7 @@ def design(section):
 #telegram_lists()
 
 def choose_top_urls(section):
+    import requests
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
     try:
@@ -1273,21 +1274,26 @@ def choose_top_urls(section):
     except Exception as e:
         print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
         return
-
     if not news_list_raw.strip():
         print(f"❌ Файл {file_name} пустой.")
         return
-    
+
     prompt_top = top_prompts.get(section, "")
+    # Новый sample формата и инструкция
+    system_content = (
+        "Отвечай строго структурированным JSON: список объектов с ключами 'theme', 'title', 'url'. "
+        "Все объекты относятся к 4 главным темам мировой экономики, выделенным по предоставленному списку. "
+        "Не добавляй никаких других полей или комментариев."
+    )
     prompt_text = "\n".join([str(prompt_top), news_list_raw])
-    
+
     try:
         payload = {
             "model": "sonar-pro",
             "messages": [
                 {
                     "role": "system",
-                    "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете — выбирай только из приложенного списка."
+                    "content": system_content
                 },
                 {
                     "role": "user",
@@ -1295,29 +1301,39 @@ def choose_top_urls(section):
                 }
             ],
             "temperature": 0.2,
-            "response_mime_type": "application/json",
-            "disable_search": True
+            "disable_search": True,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "theme": {"type": "string"},
+                            "title": {"type": "string"},
+                            "url": {"type": "string"}
+                        },
+                        "required": ["theme", "title", "url"]
+                    }
+                }
+            }
         }
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-
         choices = result.get("choices")
         if not choices:
             print("❌ В ответе API нет поля 'choices'.")
             return
-
         first_choice = choices[0]
         message = first_choice.get("message", {})
         content = message.get("content")
         finish_reason = first_choice.get("finish_reason")
         print(f"Finish reason: {finish_reason}")
-
         if content is None or content.strip() == "":
             print("❌ Модель вернула пустой ответ (content пустой).")
             return
-        
-        # Используем функцию extract_json для безопасного извлечения JSON
+
         data = extract_json(content)
         if data is None:
             print("❌ Не удалось извлечь валидный JSON из ответа модели.")
@@ -1325,42 +1341,31 @@ def choose_top_urls(section):
             print(content)
             print("===================")
             return
-        
-        # Если пришёл список, оборачиваем в словарь с темой 'unknown'
-        if isinstance(data, list):
-            print("⚠️ JSON пришёл в виде списка, оборачиваем в словарь с темой 'unknown'")
-            data = {"unknown": data}
-        
-        if not isinstance(data, dict):
-            print(f"❌ Ожидался JSON-объект (словарь) после преобразования, а получен {type(data)}")
-            return
-        
-        valid_output = []
-        for theme, news_list in data.items():
-            if not isinstance(news_list, list):
-                print(f"❌ Для темы '{theme}' ожидался список, а получен {type(news_list)}")
-                return
-            for item in news_list:
-                if not isinstance(item, dict):
-                    print(f"❌ Элемент новости должен быть объектом, а получен {type(item)}")
-                    return
-                title = item.get("title")
-                url_ = item.get("url")
-                if title and url_:
-                    valid_output.append({
-                        "theme": theme,
-                        "title": title,
-                        "url": url_
-                    })
 
+        if not isinstance(data, list):
+            print(f"❌ Ожидался список объектов, а получено {type(data)}")
+            return
+
+        valid_output = []
+        for item in data:
+            if not isinstance(item, dict):
+                print(f"❌ Элемент новости должен быть объектом, а получен {type(item)}")
+                return
+            theme = item.get("theme")
+            title = item.get("title")
+            url_ = item.get("url")
+            if theme and title and url_:
+                valid_output.append({
+                    "theme": theme,
+                    "title": title,
+                    "url": url_
+                })
         if not valid_output:
             print("❌ Итоговый JSON пуст.")
             return
-
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
-
     output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
     save_to_drive(file_name, valid_output, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
