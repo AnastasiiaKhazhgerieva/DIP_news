@@ -33,6 +33,8 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from typing import List
+from pydantic import BaseModel
 
 # Auxilliary
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -64,7 +66,7 @@ about = drive_service.about().get(fields="user").execute()
 print("✅ Авторизация от имени:", about["user"]["displayName"], about["user"]["emailAddress"])
 
 
-MY_FOLDER_ID = "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F" # папка reports на google drive
+MY_FOLDER_ID = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe" # папка reports на google drive
 
 API_KEY = os.environ.get("PERPLEXITY_API_KEY")  # для workflow
 #API_KEY = userdata.get('perplexity_api_key')   # для локального запуска
@@ -125,7 +127,7 @@ def telegram_bullets():
 
 ### Functions for google drive
 
-def find_file_in_drive(file_name: str, folder_id = "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F") -> str:
+def find_file_in_drive(file_name: str, folder_id = "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe") -> str:
     try:
         resp = drive_service.files().list(
             q=(
@@ -276,7 +278,7 @@ def fetch_kom(rubrics, dates, output_file,
             except Exception as e:
                 print(f"[ERROR] {e} when fetching {url}")
 
-    save_to_drive(output_file, all_items, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, all_items, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved Kommersant data to {output_file}")
 
 
@@ -300,7 +302,7 @@ def fetch_ved(dates, output_file,
         except Exception as e:
             all_news.append({"error": str(e)})
 
-    save_to_drive(output_file, all_news, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, all_news, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved Vedomosti data to {output_file}")
 
 # RBC scraper
@@ -402,7 +404,7 @@ def fetch_rbc(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RBC data to {output_file}")
 
 # Agro investor scraper - периодически ломается, поэтому пусть будет в коде вариант с отладкой
@@ -488,7 +490,7 @@ def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
             "link": url
         })
 
-    save_to_drive(output_file, news_list, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, news_list, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"💾 Saved {len(news_list)} news items to {output_file}")
 
 
@@ -538,7 +540,7 @@ def fetch_rg(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RG data to {output_file}")
 
 # RIA scraper
@@ -585,7 +587,7 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved RIA data to {output_file}")
 
@@ -669,7 +671,7 @@ def fetch_autostat(dates, output_file,
                 })
                 seen_urls.add(full_url)
 
-    save_to_drive(output_file, all_collected, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+    save_to_drive(output_file, all_collected, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
 
     print(f"Saved Autostat data to {output_file}")
 
@@ -743,21 +745,21 @@ section_to_files = {
 
 ###
 ### news lists
-file_id = find_file_in_drive("lists_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("lists_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     lists_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     lists_world = ""
 
-file_id = find_file_in_drive("lists_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("lists_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     lists_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     lists_rus = ""
 
-file_id = find_file_in_drive("lists_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("lists_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     lists_prices = download_text_file(file_id)
 except Exception as e:
@@ -771,21 +773,21 @@ lists_prompts = {
 }
 
 ### prioritise
-file_id = find_file_in_drive("prioritise_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("prioritise_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     prioritise_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     prioritise_world = ""
 
-file_id = find_file_in_drive("prioritise_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("prioritise_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     prioritise_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     prioritise_rus = ""
 
-file_id = find_file_in_drive("prioritise_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("prioritise_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     prioritise_prices = download_text_file(file_id)
 except Exception as e:
@@ -800,7 +802,7 @@ prioritise_prompts = {
 
 ### design
 
-file_id = find_file_in_drive("design.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("design.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     prompt_design = download_text_file(file_id)
 except Exception as e:
@@ -808,21 +810,21 @@ except Exception as e:
     prompt_design = ""
 
 ### top
-file_id = find_file_in_drive("top_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("top_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     top_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     top_world = ""
 
-file_id = find_file_in_drive("top_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("top_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     top_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     top_rus = ""
 
-file_id = find_file_in_drive("top_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("top_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     top_prices = download_text_file(file_id)
 except Exception as e:
@@ -836,21 +838,21 @@ top_prompts = {
 }
 
 ### bullets
-file_id = find_file_in_drive("bullets_world.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("bullets_world.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     bullets_world = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     bullets_world = ""
 
-file_id = find_file_in_drive("bullets_rus.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("bullets_rus.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     bullets_rus = download_text_file(file_id)
 except Exception as e:
     print("Ошибка при скачивании файла:", e)
     bullets_rus = ""
 
-file_id = find_file_in_drive("bullets_prices.txt", "1iWkat21Akv0TGHbUXqXzE3b5B3yjAnpf")
+file_id = find_file_in_drive("bullets_prices.txt", "1N7-qRmFebMzij2yR3nm7Edp6Hoayva-V")
 try:
     bullets_prices = download_text_file(file_id)
 except Exception as e:
@@ -863,46 +865,35 @@ bullets_prompts = {
         "prices": bullets_prices
 }
 
-example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n'
+example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей\r\nhttps://www.kommersant.ru/doc/7329366\r\n day: 2025-09-06 \r\n2.\tСтроители просят смягчить правила распоряжения авансами\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847\r\n day: 2025-08-12 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс\r\nhttps://tass.ru/ekonomika/22497349 \r\n day: 2025-03-10 \r\n 4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома\r\nhttps://www.interfax.ru/business/994801 \r\n day: 2025-07-06 \r\n'
 
 def extract_json(text: str):
     """
     Извлекает валидный JSON (объект или массив) из строки.
     Приоритет:
-    1. Кодовые блоки: ```json [...]``` или ```[...]```
+    1. Кодовые блоки: `````` или ``````
     2. Самый длинный валидный фрагмент, начинающийся с [ или { и заканчивающийся на ] или }
     3. Перебор всех возможных подстрок (на случай битого форматирования)
-
     Возвращает: dict | list | None
     """
     if not isinstance(text, str):
         return None
-
     text = text.strip()
-
     # Шаг 1: Ищем кодовые блоки (наиболее надёжный способ)
-    code_block_match = re.search(r"```(?:json|)\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
+    code_block_match = re.search(r"``````", text, re.IGNORECASE)
     if code_block_match:
         candidate = code_block_match.group(1).strip()
         try:
             return json.loads(candidate)
         except json.JSONDecodeError as e:
             print(f"❌ JSON в кодовом блоке невалиден: {e}")
-            # Можно залогировать text[:500] для отладки
-
     # Шаг 2: Ищем самый длинный возможный JSON-массив или объект
-    candidates = []
-
-    # Находим все пары [..] и {..}
     brackets = []
-
     for i, char in enumerate(text):
         if char in '[{':
             brackets.append((i, char))
         elif char in ']}':
             brackets.append((i, char))
-
-    # Собираем возможные валидные диапазоны
     stack = []
     ranges = []
     for pos, char in brackets:
@@ -914,22 +905,16 @@ def extract_json(text: str):
         elif char == '}' and stack and stack[-1][1] == '{':
             start, _ = stack.pop()
             ranges.append((start, pos))
-
-    # Сортируем по длине (сначала самые длинные)
     ranges.sort(key=lambda x: x[1] - x[0], reverse=True)
-
     for start, end in ranges:
         candidate = text[start:end+1]
         try:
             result = json.loads(candidate)
-            # Дополнительная проверка: хотя бы один ключ или элемент
             if isinstance(result, (dict, list)) and len(result) >= 0:
-                return result  # Возвращаем первый валидный (самый длинный)
+                return result
         except json.JSONDecodeError:
             continue
-
-    # Шаг 3: Фолбэк — попробовать найти хотя бы что-то похожее
-    # Удаляем экранирование, если строка была "заэкранирована"
+    # Шаг 3: Фолбэк — попытка убрать экранирование
     if text.startswith('"') and text.endswith('"'):
         try:
             unescaped = text[1:-1].encode().decode('unicode_escape')
@@ -938,9 +923,7 @@ def extract_json(text: str):
                 return json.loads(unescaped)
         except Exception:
             pass
-
-    # Шаг 4: Полный фолбэк — перебор всех подстрок (очень медленно, только если всё сломалось)
-    # Это крайний случай
+    # Шаг 4: Крайний фолбэк — перебор подстрок (медленно)
     for start in range(len(text)):
         if text[start] not in '[{':
             continue
@@ -954,14 +937,15 @@ def extract_json(text: str):
                 return json.loads(fragment)
             except json.JSONDecodeError:
                 continue
-
     return None
     
 def create_news_lists(section):
+    current_weekday_num = datetime.today().weekday()
+
     # Если сегодня не суббота — пробуем прочитать уже сохранённый <section>.json
-    if datetime.today().weekday() != 5:  # 5 = Saturday
+    if current_weekday_num != 5:  # 5 = Saturday
         try:
-            existing_id = find_file_in_drive(f"{section}.json", "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
+            existing_id = find_file_in_drive(f"{section}.json", "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
             existing_text = download_text_file(existing_id)
             try:
                 combined_items = json.loads(existing_text)
@@ -972,6 +956,7 @@ def create_news_lists(section):
     else:
         combined_items = []
 
+    # Обновляем seen_urls и подготавливаем set для сохранённых URL
     seen_urls = {item["url"] for item in combined_items if isinstance(item, dict) and "url" in item}
 
     # Список файлов и промпт для секции
@@ -986,7 +971,7 @@ def create_news_lists(section):
 
         # Загружаем JSON-файл из Google Drive
         try:
-            file_id = find_file_in_drive(json_filename, "11SZTR84aoT23gTN0SvihZv-w0XcNFdEV")
+            file_id = find_file_in_drive(json_filename, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
             raw_text = download_text_file(file_id)
         except FileNotFoundError:
             print(f"Файл '{json_filename}' не найден. Пропускаем.")
@@ -1026,10 +1011,8 @@ def create_news_lists(section):
                 ],
                 "temperature": 0.2,
                 "response_mime_type": "application/json",
-                "max_tokens": 1000,
                 "disable_search": True
             }
-
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
@@ -1042,28 +1025,33 @@ def create_news_lists(section):
 
             assistant_json_str = choices[0]["message"]["content"]
 
-            # Парсим JSON из строки
+            # Парсим JSON из строки (ожидается список словарей с ключами 'url' и 'title')
             try:
                 items = json.loads(assistant_json_str)
             except json.JSONDecodeError as e:
                 print(f"Ответ модели для '{json_filename}' не содержит валидный JSON: {e}")
                 continue
 
-            # Приводим к списку
+            # Приводим к списку, если словарь
             if isinstance(items, dict):
                 items = [items]
+
             if not isinstance(items, list):
                 print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
                 continue
 
-            # Фильтруем и добавляем новые новости
+            # Фильтруем и добавляем новые новости с дополнительным полем day
             for entry in items:
                 url_val = entry.get("url")
                 title_val = entry.get("title")
                 if not title_val or not url_val or url_val in seen_urls:
                     continue
                 seen_urls.add(url_val)
-                combined_items.append({"title": title_val, "url": url_val})
+                combined_items.append({
+                    "title": title_val,
+                    "url": url_val,
+                    "day": current_weekday_num  # добавляем номер дня недели
+                })
 
         except Exception as e:
             print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
@@ -1073,9 +1061,18 @@ def create_news_lists(section):
         print(f"For section '{section}', zero JSONs were successfully processed.")
         return
 
+    # Сохраняем объединённый результат с полем day в каждом элементе
+    output_file = f"{section}.json"
+    save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
+    print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
+
+    if not combined_items:
+        print(f"For section '{section}', zero JSONs were successfully processed.")
+        return
+
     # Сохраняем объединённый результат
     output_file = f"{section}.json"
-    save_to_drive(output_file, combined_items, my_folder="15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
+    save_to_drive(output_file, combined_items, my_folder="1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
@@ -1088,8 +1085,8 @@ create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
-    folder_id = "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm"
-    temp_folder_id = "1VXj9CWsSXgNdKDsn1XTux2bqjBYUXnzr"
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
+    temp_folder_id = "12I1CB-RDDTkHUTk1wxD7qOT9bZWA8ssF"
     combined_items = []
     # Загружаем файл с новостями
     try:
@@ -1121,7 +1118,6 @@ def prioritise(section):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-
         # Проверка ответа
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
@@ -1138,7 +1134,6 @@ def prioritise(section):
         except json.JSONDecodeError as e:
             print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
             return
-
         if isinstance(items, dict):
             items = [items]
         if not isinstance(items, list):
@@ -1147,20 +1142,23 @@ def prioritise(section):
         
         # Сохраняем полный ответ в отдельную папку
         save_to_drive(file_name, items, temp_folder_id, file_format="json")
-
         # Обработка с grade
         if all(isinstance(entry, dict) and "grade" in entry for entry in items):
             items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
             items_top40 = items_sorted[:40]
-            combined_items = [{"title": e.get("title"), "url": e.get("url")} for e in items_top40 if e.get("url")]
+            combined_items = [
+                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                for e in items_top40 if e.get("url")
+            ]
         else:
             # Нет grade — берем первые 40 записей с валидным url
-            combined_items = [{"title": e.get("title"), "url": e.get("url")} for e in items if e.get("url")][:40]
-
+            combined_items = [
+                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                for e in items if e.get("url")
+            ][:40]
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
-
     # Сохраняем итоговый результат в исходную папку
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
@@ -1171,12 +1169,10 @@ prioritise("rus")
 time.sleep(60)
 prioritise("prices")
 
-time.sleep(60)
-
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
     try:
-        file_id = find_file_in_drive(file_name_json, "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
+        file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"Файл {file_name_json} не найден в папке.")
@@ -1184,35 +1180,37 @@ def design_wo_llm(section):
     except Exception as e:
         print(f"Ошибка при загрузке файла {file_name_json}: {e}")
         return
-
     # Парсим входной JSON
     try:
         news_items = json.loads(news_list_raw)
     except json.JSONDecodeError as e:
         print(f"Ошибка парсинга JSON: {e}")
         return
-
-    # Формируем нумерованный список, как в примере
+    # Формируем нумерованный список, как в примере, с сохранением day
     formatted_lines = []
     for i, item in enumerate(news_items, 1):
         title = item.get("title", "").strip()
         url = item.get("url", "").strip()
+        day = item.get("day")  # сохраняем поле day, если есть
         if not title or not url:
             continue
-        line = f"{i}.\t{title}\n{url}"
+        if day is not None:
+            line = f"{i}.\t{title} (day: {day})\n{url}"
+        else:
+            line = f"{i}.\t{title}\n{url}"
         formatted_lines.append(line)
-    
+
     # Склеиваем результаты с переводом строки между ними
     result_text = "\r\n".join(formatted_lines) + "\r\n" if formatted_lines else ""
-
     file_name_txt = f"{section}.txt"
-    save_to_drive(file_name_txt, result_text, "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F", file_format="txt")
+    save_to_drive(file_name_txt, result_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
     print(f"✅ design({section}) — успешно сохранён файл с текстом.")
+
 
 def design(section):
     file_name_json = f"{section}.json"
     try:
-        file_id = find_file_in_drive(file_name_json, "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm")
+        file_id = find_file_in_drive(file_name_json, "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe")
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"Файл {file_name_json} не найден в папке.")
@@ -1220,7 +1218,6 @@ def design(section):
     except Exception as e:
         print(f"Ошибка при загрузке файла {file_name_json}: {e}")
         return
-
     raw_parts = [prompt_design, example, news_list_raw]
     prompt_parts = []
     for part in raw_parts:
@@ -1229,7 +1226,6 @@ def design(section):
         else:
             prompt_parts.append(str(part))
     prompt_text = "\n".join(prompt_parts)
-
     try:
         payload = {
             "model": "sonar-pro",
@@ -1238,28 +1234,23 @@ def design(section):
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500,
             "disable_search": True
         }
-
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
             print(f"Модель не вернула ответ для '{file_name_json}'.")
             return
-
         assistant_text = choices[0]["message"]["content"]
-
         file_name_txt = f"{section}.txt"
-        save_to_drive(file_name_txt, assistant_text, "1pEOpXqNo56Wmv9iGy9I-0TMIkFm4gh8F", file_format="txt")
+        save_to_drive(file_name_txt, assistant_text, "1BwBFMln6HcGUfBFN4-UlNueOTKUehiRe", file_format="txt")
         print(f"✅ design({section}) — успешно сохранён файл с текстом.")
-
     except Exception as e:
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
+
 
 for section in ["world", "rus", "prices"]:
     try:
@@ -1268,12 +1259,16 @@ for section in ["world", "rus", "prices"]:
         print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
         design(section)
         time.sleep(60)
+telegram_lists()
 
-def choose_top_urls(section, max_chars=1500):
+class NewsItem(BaseModel):
+    theme: str
+    title: str
+    url: str
+
+def choose_top_urls(section):
     file_name = f"{section}.json"
-    folder_id = "15RgeRNYnmFgyK-FNySjT0THgr-eWM2tm"  # Входная папка в Google Drive
-
-    # Загружаем входной JSON
+    folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
     try:
         file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
@@ -1283,78 +1278,85 @@ def choose_top_urls(section, max_chars=1500):
     except Exception as e:
         print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
         return
-
     if not news_list_raw.strip():
         print(f"❌ Файл {file_name} пустой.")
         return
 
-    # Формируем prompt
     prompt_top = top_prompts.get(section, "")
+    system_content = (
+        "Анализируй предоставленный список новостей и выдели 4 ключевые темы мировой экономики. "
+        "Верни список объектов с полями theme, title, url для каждой новости."
+    )
     prompt_text = "\n".join([str(prompt_top), news_list_raw])
 
     try:
         payload = {
-            "model": "sonar-pro",
+            "model": "sonar-pro", 
             "messages": [
-                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
-                {"role": "user", "content": prompt_text}
+                {
+                    "role": "system",
+                    "content": system_content
+                },
+                {
+                    "role": "user",
+                    "content": prompt_text
+                }
             ],
             "temperature": 0.2,
-            "response_mime_type": "application/json",
-            "max_tokens": 1000,
-            "disable_search": True
+            "disable_search": True,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "schema": {
+                        "type": "array",
+                        "items": NewsItem.model_json_schema()
+                    }
+                }
+            }
         }
-
-        # Запрашиваем Perplexity API
+        
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-
-        # Проверяем, что есть ответ
         choices = result.get("choices")
-        if not choices or not choices[0].get("message", {}).get("content"):
-            print(f"❌ Модель не вернула ответ для '{file_name}'.")
+        if not choices:
+            print("❌ В ответе API нет поля 'choices'.")
             return
-
-        assistant_json_str = choices[0]["message"]["content"]
-
-        # Пробуем распарсить JSON
-        try:
-            items = json.loads(assistant_json_str)
-        except json.JSONDecodeError as e:
-            print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
+        
+        content = choices[0]["message"]["content"]
+        if not content:
+            print("❌ Модель вернула пустой ответ.")
             return
-
-        # Приводим dict → list
-        if isinstance(items, dict):
-            items = [items]
-
-        if not isinstance(items, list):
-            print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+            
+        # Парсим JSON и валидируем через Pydantic
+        import json
+        data = json.loads(content)
+        
+        # Валидируем каждый элемент через Pydantic
+        valid_output = []
+        for item_data in data:
+            try:
+                news_item = NewsItem.model_validate(item_data)
+                valid_output.append({
+                    "theme": news_item.theme,
+                    "title": news_item.title,
+                    "url": news_item.url
+                })
+            except Exception as e:
+                print(f"⚠️ Пропускаем невалидный элемент: {e}")
+                continue
+                
+        if not valid_output:
+            print("❌ Итоговый JSON пуст.")
             return
-
-        # Обрезаем суммарную длину, если надо
-        combined_items = []
-        current_len = 0
-        for entry in items:
-            url_val = entry.get("url")
-            title_val = entry.get("title")
-            json_entry = {"title": title_val, "url": url_val}
-            entry_len = len(json.dumps(json_entry, ensure_ascii=False))
-            if current_len + entry_len > max_chars:
-                break
-            if url_val:
-                combined_items.append(json_entry)
-                current_len += entry_len
-
+            
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
-
-    # Сохраняем результат в выходную папку
-    output_folder_id = "1IHxfXPjsykIAIpVBN1F8MMRTarQwWJF5"
-    save_to_drive(file_name, combined_items, output_folder_id, file_format="json")
-    print(f"✅ choose_top_urls({section}) — сохранён корректный JSON.")
+    
+    output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
+    save_to_drive(file_name, valid_output, output_folder_id, file_format="json")
+    print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 if datetime.today().weekday() == 3:
     choose_top_urls("world")
@@ -1364,7 +1366,6 @@ if datetime.today().weekday() == 3:
     choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
-
     def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
         paragraphs = []
         for p in soup.find_all('p'):
@@ -1385,11 +1386,11 @@ def read_top_urls(section, max_chars=3000):
 
     # Имя файла с топ ссылками для секции, например "world.json"
     file_name = f"{section}.json"
-    
-    # Находим ID файла в папке с топами (1IHxfXPjsykIAIpVBN1F8MMRTarQwWJF5)
-    file_id = find_file_in_drive(file_name, folder_id="1IHxfXPjsykIAIpVBN1F8MMRTarQwWJF5")
-    
-    # Скачиваем содержимое файла — список словарей с title и url
+
+    # Находим ID файла в папке с топами (17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V)
+    file_id = find_file_in_drive(file_name, folder_id="17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V")
+
+    # Скачиваем содержимое файла — список словарей с title, url и темой
     json_text = download_text_file(file_id)
     try:
         items = json.loads(json_text)
@@ -1401,6 +1402,7 @@ def read_top_urls(section, max_chars=3000):
     for item in items:
         url = item.get("url") or item.get("URL")
         title = item.get("title", "")
+        theme = item.get("theme") or item.get("тема") or "undefined"
         if not url:
             continue
         try:
@@ -1410,16 +1412,17 @@ def read_top_urls(section, max_chars=3000):
             results.append({
                 "title": title,
                 "url": url,
+                "theme": theme,
                 "text": page_text
             })
         except Exception as e:
             print(f"Ошибка при обработке {url}: {e}")
 
-    # Сохраняем результат в другую папку с текстами (17jD6tSxK6x64v_nXG63r5lbEAf74FYSY)
+    # Сохраняем результат в другую папку с текстами (13KDzhQ0Y6GzKzEaMZggHoF38bglN358r)
     save_to_drive(
         file_name,
         results,
-        my_folder="17jD6tSxK6x64v_nXG63r5lbEAf74FYSY",
+        my_folder="13KDzhQ0Y6GzKzEaMZggHoF38bglN358r",
         file_format="json"
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
@@ -1432,7 +1435,7 @@ if datetime.today().weekday() == 3:
 def create_bullets(section):
     list_file = f"{section}.json"
     try:
-        file_id = find_file_in_drive(list_file, "17jD6tSxK6x64v_nXG63r5lbEAf74FYSY")
+        file_id = find_file_in_drive(list_file, "13KDzhQ0Y6GzKzEaMZggHoF38bglN358r")
         list_content = download_text_file(file_id)
     except Exception as e:
         print(f"Ошибка загрузки файла {list_file}: {e}")
@@ -1456,7 +1459,6 @@ def create_bullets(section):
                 {"role": "user", "content": prompt_text}
             ],
             "temperature": 0.7,
-            "max_tokens": 1500
         }
 
         response = requests.post(url, headers=headers, json=payload)
@@ -1471,7 +1473,7 @@ def create_bullets(section):
         assistant_text = choices[0]["message"]["content"]
 
         file_name = f"report_{section}.txt"
-        save_to_drive(file_name, assistant_text, my_folder="1UzIu11Qj0ZQ0zBbvGSR7-oowq-8upvIM", file_format="txt")
+        save_to_drive(file_name, assistant_text, my_folder="18Lk31SodxZB3qgZm4ElX3BCejQihreVC", file_format="txt")
         print(f"{section}: буллиты успешно записаны.")
 
     except Exception as e:
@@ -1484,3 +1486,4 @@ if datetime.today().weekday() == 3:
     create_bullets("rus")
     time.sleep(60)
     create_bullets("prices")
+    telegram_bullets()
