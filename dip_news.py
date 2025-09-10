@@ -693,20 +693,20 @@ rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabot
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-#fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
-#fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-#fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
-#fetch_ved(dates_ved, "ved.json")
+fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
+fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
+fetch_ved(dates_ved, "ved.json")
 
-#fetch_rbc(rubrics_rbc, dates, "rbc.json")
-#try:
-#    fetch_agro(dates, "agro.json")
-#except Exception as e:
+fetch_rbc(rubrics_rbc, dates, "rbc.json")
+try:
+    fetch_agro(dates, "agro.json")
+except Exception as e:
 
-#    pass
-#fetch_rg(rubrics_rg, dates, "rg.json")
-#fetch_ria(dates, "ria.json")
-#fetch_autostat(dates, "autostat.json", rubrics_auto)
+    pass
+fetch_rg(rubrics_rg, dates, "rg.json")
+fetch_ria(dates, "ria.json")
+fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -1077,11 +1077,11 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-#create_news_lists("world")
-#time.sleep(60)
-#create_news_lists("rus")
-#time.sleep(60)
-#create_news_lists("prices")
+create_news_lists("world")
+time.sleep(60)
+create_news_lists("rus")
+time.sleep(60)
+create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
@@ -1163,13 +1163,11 @@ def prioritise(section):
     save_to_drive(file_name, combined_items, folder_id, file_format="json")
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
-#prioritise("world")
-#time.sleep(60)
-# prioritise("rus")
-#time.sleep(60)
-#prioritise("prices")
-
-#time.sleep(60)
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
+prioritise("prices")
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
@@ -1254,14 +1252,14 @@ def design(section):
         return
 
 
-#for section in ["world", "rus", "prices"]:
-#    try:
-#        design_wo_llm(section)
-#    except Exception as e:
-#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-#        design(section)
-#        time.sleep(60)
-#telegram_lists()
+for section in ["world", "rus", "prices"]:
+    try:
+        design_wo_llm(section)
+    except Exception as e:
+        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+        design(section)
+        time.sleep(60)
+telegram_lists()
 
 class NewsItem(BaseModel):
     theme: str
@@ -1360,12 +1358,12 @@ def choose_top_urls(section):
     save_to_drive(file_name, valid_output, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
-#if datetime.today().weekday() == 3:
-choose_top_urls("world")
-time.sleep(60)
-#    choose_top_urls("rus")
-#    time.sleep(60)
-#    choose_top_urls("prices")
+if datetime.today().weekday() == 3:
+    choose_top_urls("world")
+    time.sleep(60)
+    choose_top_urls("rus")
+    time.sleep(60)
+    choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
     def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
@@ -1429,10 +1427,10 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-#if datetime.today().weekday() == 3:
-read_top_urls("world")
-#    read_top_urls("rus")
-#    read_top_urls("prices")
+if datetime.today().weekday() == 3:
+    read_top_urls("world")
+    read_top_urls("rus")
+    read_top_urls("prices")
 
 def create_bullets(section):
     list_file = f"{section}.json"
@@ -1482,10 +1480,10 @@ def create_bullets(section):
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-#if datetime.today().weekday() == 3:
-create_bullets("world")
-#    time.sleep(60)
- #   create_bullets("rus")
-  #  time.sleep(60)
-   # create_bullets("prices")
-    #telegram_bullets()
+if datetime.today().weekday() == 3:
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
+    create_bullets("prices")
+    telegram_bullets()
