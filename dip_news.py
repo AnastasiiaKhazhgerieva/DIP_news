@@ -33,6 +33,8 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from typing import List
+from pydantic import BaseModel
 
 # Auxilliary
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -1261,8 +1263,12 @@ def design(section):
 #        time.sleep(60)
 #telegram_lists()
 
+class NewsItem(BaseModel):
+    theme: str
+    title: str
+    url: str
+
 def choose_top_urls(section):
-    import requests
     file_name = f"{section}.json"
     folder_id = "1Wo6zk7T8EllL7ceA5AwaPeBCaEUeiSYe"
     try:
@@ -1279,17 +1285,15 @@ def choose_top_urls(section):
         return
 
     prompt_top = top_prompts.get(section, "")
-    # Новый sample формата и инструкция
     system_content = (
-        "Отвечай строго структурированным JSON: список объектов с ключами 'theme', 'title', 'url'. "
-        "Все объекты относятся к 4 главным темам мировой экономики, выделенным по предоставленному списку. "
-        "Не добавляй никаких других полей или комментариев."
+        "Анализируй предоставленный список новостей и выдели 4 ключевые темы мировой экономики. "
+        "Верни список объектов с полями theme, title, url для каждой новости."
     )
     prompt_text = "\n".join([str(prompt_top), news_list_raw])
 
     try:
         payload = {
-            "model": "sonar-pro",
+            "model": "sonar-pro", 
             "messages": [
                 {
                     "role": "system",
@@ -1305,19 +1309,14 @@ def choose_top_urls(section):
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "theme": {"type": "string"},
-                            "title": {"type": "string"},
-                            "url": {"type": "string"}
-                        },
-                        "required": ["theme", "title", "url"]
+                    "schema": {
+                        "type": "array",
+                        "items": NewsItem.model_json_schema()
                     }
                 }
             }
         }
+        
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
@@ -1325,47 +1324,38 @@ def choose_top_urls(section):
         if not choices:
             print("❌ В ответе API нет поля 'choices'.")
             return
-        first_choice = choices[0]
-        message = first_choice.get("message", {})
-        content = message.get("content")
-        finish_reason = first_choice.get("finish_reason")
-        print(f"Finish reason: {finish_reason}")
-        if content is None or content.strip() == "":
-            print("❌ Модель вернула пустой ответ (content пустой).")
+        
+        content = choices[0]["message"]["content"]
+        if not content:
+            print("❌ Модель вернула пустой ответ.")
             return
-
-        data = extract_json(content)
-        if data is None:
-            print("❌ Не удалось извлечь валидный JSON из ответа модели.")
-            print("=== Ответ модели ===")
-            print(content)
-            print("===================")
-            return
-
-        if not isinstance(data, list):
-            print(f"❌ Ожидался список объектов, а получено {type(data)}")
-            return
-
+            
+        # Парсим JSON и валидируем через Pydantic
+        import json
+        data = json.loads(content)
+        
+        # Валидируем каждый элемент через Pydantic
         valid_output = []
-        for item in data:
-            if not isinstance(item, dict):
-                print(f"❌ Элемент новости должен быть объектом, а получен {type(item)}")
-                return
-            theme = item.get("theme")
-            title = item.get("title")
-            url_ = item.get("url")
-            if theme and title and url_:
+        for item_data in data:
+            try:
+                news_item = NewsItem.model_validate(item_data)
                 valid_output.append({
-                    "theme": theme,
-                    "title": title,
-                    "url": url_
+                    "theme": news_item.theme,
+                    "title": news_item.title,
+                    "url": news_item.url
                 })
+            except Exception as e:
+                print(f"⚠️ Пропускаем невалидный элемент: {e}")
+                continue
+                
         if not valid_output:
             print("❌ Итоговый JSON пуст.")
             return
+            
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
+    
     output_folder_id = "17kQBohwKOQbBIwFl2yEQYWGUjuu-hf6V"
     save_to_drive(file_name, valid_output, output_folder_id, file_format="json")
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
