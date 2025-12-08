@@ -687,7 +687,7 @@ dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
 rubrics_kom_rus = [3, 4, 40]
 rubrics_kom_world = [3, 5]
-rubrics_kom_prices = [41]
+rubrics_kom_prices = [3, 4, 41] # 3-4 (from 4 need only fuel theme?) added, merge kommersant later 
 rubrics_rbc = ["economics", "business", "finances"]
 rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
 rubrics_auto = [21, 8, 13, 70, 71]
@@ -1259,7 +1259,7 @@ for section in ["world", "rus", "prices"]:
         print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
         design(section)
         time.sleep(60)
-telegram_lists()
+#telegram_lists()
 
 class NewsItem(BaseModel):
     theme: str
