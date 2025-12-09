@@ -239,7 +239,7 @@ def format_dates(dates_list, fmt="%Y-%m-%d"):
     return [d.strftime(fmt) for d in dates_list]
 
 ## Getting web page soup
-def get_page_soup(url, headers=HEADERS, timeout=10):
+def get_page_soup(url, headers=HEADERS, timeout=30):
     resp = requests.get(url, headers=headers, timeout=timeout)
     resp.raise_for_status()
     return BeautifulSoup(resp.text, "html.parser")
@@ -685,17 +685,22 @@ dates = get_last_dates(days_before)
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
-rubrics_kom_rus = [3, 4, 40]
-rubrics_kom_world = [3, 5]
-rubrics_kom_prices = [3, 4, 41] # 3-4 (from 4 need only fuel theme?) added, merge kommersant later 
+#rubrics_kom_econ = [3, 4, 40]
+#rubrics_kom_world = [3, 5]
+#rubrics_kom_marketss = [41] 
+
+rubrics_kom_econ = [3, 4, 40] # 3 - экономика, 4 - бизнеc,  40 - финансы (темы рубрик? для цен топливо в 4 https://www.kommersant.ru/theme/2913 )
+rubrics_kom_world = [5] # 5 - мир 
+rubrics_kom_markets = [41] # 41 - потребительский рынок
+
 rubrics_rbc = ["economics", "business", "finances"]
 rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
+fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
 fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
+fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
 fetch_ved(dates_ved, "ved.json")
 
 fetch_rbc(rubrics_rbc, dates, "rbc.json")
@@ -712,7 +717,7 @@ fetch_autostat(dates, "autostat.json", rubrics_auto)
 section_to_files = {
     "world": [
         "kom_world.json",
-        "kom_rus.json",
+        "kom_econ.json",
         "ved.json",
         "rbc.json",
         "agro.json",
@@ -720,7 +725,7 @@ section_to_files = {
         "ria.json"
     ],
     "rus": [
-        "kom_rus.json",
+        "kom_econ.json",
         "ved.json",
         "rbc.json",
         "agro.json",
@@ -728,8 +733,8 @@ section_to_files = {
         "ria.json"
     ],
     "prices": [
-        "kom_prices.json",
-        "kom_rus.json",
+        "kom_markets.json",
+        "kom_econ.json",
         "ved.json",
         "rbc.json",
         "agro.json",
