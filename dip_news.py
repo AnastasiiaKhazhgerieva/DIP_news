@@ -407,88 +407,86 @@ def fetch_rbc(rubrics, dates, output_file,
     save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RBC data to {output_file}")
 
-# Agro investor scraper - периодически ломается, поэтому пусть будет в коде вариант с отладкой
 
-def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
-    print(f"Fetching Agroinvestor: {base_url}")
+# Agroinvestor scraper 
 
-    soup = get_page_soup(base_url)
-
-    if soup is None:
-        print("❌ Failed to retrieve or parse the page.")
-        return
-
-    print("✅ Page fetched successfully.")
-    news_list = []
-    seen_links = set()
-
+def fetch_agro(dates, output_file,
+               base_url="https://www.agroinvestor.ru/news/"):
+    base_domain = "https://www.agroinvestor.ru"
     ru_months = {
         "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
         "мая": 5, "июня": 6, "июля": 7, "августа": 8,
-        "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12
+        "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
     }
 
-    print(f"Looking for dates: {dates}")
+    def parse_once() -> list:
+        soup = get_page_soup(base_url)
+        if soup is None:
+            print("❌ Failed to retrieve or parse the page.")
+            return []
 
-    for time_tag in soup.find_all("time"):
-        date_text = time_tag.get_text(strip=True).replace("\xa0", " ")
-        if not date_text:
-            continue
+        news_list = []
+        seen_urls = set()
 
-        print(f"🕒 Found date text: '{date_text}'")
-        parts = date_text.split()
-        if len(parts) != 3:
-            print("⚠️ Unexpected date format. Skipping.")
-            continue
+        for block in soup.select("div.news__item-info"):
+            a = block.find("a", class_="news__item-desc")
+            if not a:
+                continue
+            href = a.get("href", "").strip()
+            if not href:
+                continue
+            full_url = href if href.startswith("http") else base_domain + href
+            if full_url in seen_urls:
+                continue
 
-        day_str, month_str, year_str = parts
-        try:
-            day = int(day_str)
-            year = int(year_str)
-        except ValueError as e:
-            print(f"⚠️ Could not parse day/year: {e}")
-            continue
+            h3 = a.find("h3")
+            if not h3:
+                continue
+            title = h3.get_text(strip=True)
+            if not title:
+                continue
 
-        month_str = month_str.lower()
-        if month_str not in ru_months:
-            print(f"⚠️ Unknown month: '{month_str}'")
-            continue
+            time_tag = block.find("time")
+            if not time_tag:
+                continue
+            date_text = time_tag.get_text(strip=True).replace("\xa0", " ")
+            parts = date_text.split()
+            if len(parts) != 3:
+                continue
+            day_str, month_str, year_str = parts
+            try:
+                day = int(day_str)
+                year = int(year_str)
+            except ValueError:
+                continue
+            month_str = month_str.lower()
+            if month_str not in ru_months:
+                continue
+            month = ru_months[month_str]
+            try:
+                news_date = date(year, month, day)
+            except ValueError:
+                continue
 
-        month = ru_months[month_str]
-        try:
-            date_obj = date(year, month, day)
+            if news_date not in dates:
+                continue
 
-        except Exception as e:
-            print(f"⚠️ Failed to construct date object: {e}")
-            continue
+            seen_urls.add(full_url)
+            news_list.append({
+                "title": title,
+                "url": full_url,
+            })
 
-        print(f"📅 Parsed date: {date_obj}")
-        if date_obj not in dates:
-            print("⏩ Date not in requested range. Skipping.")
-            continue
+        return news_list
 
-        anchor = time_tag.find_previous("a")
-        if not anchor:
-            print("⚠️ No previous anchor tag found.")
-            continue
+    # первый проход
+    news_list = parse_once()
 
-        title = anchor.get_text(strip=True)
-        href = anchor.get("href")
-        if not href or not title:
-            print("⚠️ Missing title or href. Skipping.")
-            continue
+    # если ничего не собрали — один ретрай
+    if not news_list:
+        print("⚠️ Agroinvestor: empty result, retrying once...")
+        news_list = parse_once()
 
-        url = urljoin(base_url, href.strip())
-        if url in seen_links:
-            print(f"🔁 Duplicate link: {url}")
-            continue
-        seen_links.add(url)
-
-        print(f"✅ Added news: {title} - {url}")
-        news_list.append({
-            "title": title,
-            "link": url
-        })
 
     save_to_drive(output_file, news_list, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"💾 Saved {len(news_list)} news items to {output_file}")
