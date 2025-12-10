@@ -1483,7 +1483,7 @@ def create_bullets(section):
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-if datetime.today().weekday() == 2:
+if datetime.today().weekday() == 3:
     create_bullets("world")
     time.sleep(60)
     create_bullets("rus")
