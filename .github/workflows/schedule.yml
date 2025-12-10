@@ -7,7 +7,7 @@ on:
     # Пятница в 10:30 MSK → 7:30 UTC
     - cron: '30 7 * * Fri'
     # В остальные дни (понедельник, вторник, четверг, суббота, воскресенье) в 14:00 MSK → 11:00 UTC
-    - cron: '0 17 * * Mon,Tue,Thu,Sat,Sun'
+    - cron: '0 11 * * Mon,Tue,Thu,Sat,Sun'
   workflow_dispatch: {}
 
 jobs:
