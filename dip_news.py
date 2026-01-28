@@ -707,7 +707,7 @@ try:
 except Exception as e:
 
     pass
-fetch_rg(rubrics_rg, dates, "rg.json")
+# fetch_rg(rubrics_rg, dates, "rg.json")
 fetch_ria(dates, "ria.json")
 fetch_autostat(dates, "autostat.json", rubrics_auto)
 
@@ -727,7 +727,7 @@ section_to_files = {
         "ved.json",
         "rbc.json",
         "agro.json",
-        "rg.json",
+        #"rg.json",
         "ria.json"
     ],
     "prices": [
