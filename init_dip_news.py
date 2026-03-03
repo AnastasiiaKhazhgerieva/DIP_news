@@ -239,7 +239,7 @@ def format_dates(dates_list, fmt="%Y-%m-%d"):
     return [d.strftime(fmt) for d in dates_list]
 
 ## Getting web page soup
-def get_page_soup(url, headers=HEADERS, timeout=10):
+def get_page_soup(url, headers=HEADERS, timeout=30):
     resp = requests.get(url, headers=headers, timeout=timeout)
     resp.raise_for_status()
     return BeautifulSoup(resp.text, "html.parser")
@@ -407,88 +407,86 @@ def fetch_rbc(rubrics, dates, output_file,
     save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"Saved RBC data to {output_file}")
 
-# Agro investor scraper - периодически ломается, поэтому пусть будет в коде вариант с отладкой
 
-def fetch_agro(dates, output_file, base_url="https://www.agroinvestor.ru/"):
-    print(f"Fetching Agroinvestor: {base_url}")
+# Agroinvestor scraper 
 
-    soup = get_page_soup(base_url)
-
-    if soup is None:
-        print("❌ Failed to retrieve or parse the page.")
-        return
-
-    print("✅ Page fetched successfully.")
-    news_list = []
-    seen_links = set()
-
+def fetch_agro(dates, output_file,
+               base_url="https://www.agroinvestor.ru/news/"):
+    base_domain = "https://www.agroinvestor.ru"
     ru_months = {
         "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
         "мая": 5, "июня": 6, "июля": 7, "августа": 8,
-        "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12
+        "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
     }
 
-    print(f"Looking for dates: {dates}")
+    def parse_once() -> list:
+        soup = get_page_soup(base_url)
+        if soup is None:
+            print("❌ Failed to retrieve or parse the page.")
+            return []
 
-    for time_tag in soup.find_all("time"):
-        date_text = time_tag.get_text(strip=True).replace("\xa0", " ")
-        if not date_text:
-            continue
+        news_list = []
+        seen_urls = set()
 
-        print(f"🕒 Found date text: '{date_text}'")
-        parts = date_text.split()
-        if len(parts) != 3:
-            print("⚠️ Unexpected date format. Skipping.")
-            continue
+        for block in soup.select("div.news__item-info"):
+            a = block.find("a", class_="news__item-desc")
+            if not a:
+                continue
+            href = a.get("href", "").strip()
+            if not href:
+                continue
+            full_url = href if href.startswith("http") else base_domain + href
+            if full_url in seen_urls:
+                continue
 
-        day_str, month_str, year_str = parts
-        try:
-            day = int(day_str)
-            year = int(year_str)
-        except ValueError as e:
-            print(f"⚠️ Could not parse day/year: {e}")
-            continue
+            h3 = a.find("h3")
+            if not h3:
+                continue
+            title = h3.get_text(strip=True)
+            if not title:
+                continue
 
-        month_str = month_str.lower()
-        if month_str not in ru_months:
-            print(f"⚠️ Unknown month: '{month_str}'")
-            continue
+            time_tag = block.find("time")
+            if not time_tag:
+                continue
+            date_text = time_tag.get_text(strip=True).replace("\xa0", " ")
+            parts = date_text.split()
+            if len(parts) != 3:
+                continue
+            day_str, month_str, year_str = parts
+            try:
+                day = int(day_str)
+                year = int(year_str)
+            except ValueError:
+                continue
+            month_str = month_str.lower()
+            if month_str not in ru_months:
+                continue
+            month = ru_months[month_str]
+            try:
+                news_date = date(year, month, day)
+            except ValueError:
+                continue
 
-        month = ru_months[month_str]
-        try:
-            date_obj = date(year, month, day)
+            if news_date not in dates:
+                continue
 
-        except Exception as e:
-            print(f"⚠️ Failed to construct date object: {e}")
-            continue
+            seen_urls.add(full_url)
+            news_list.append({
+                "title": title,
+                "url": full_url,
+            })
 
-        print(f"📅 Parsed date: {date_obj}")
-        if date_obj not in dates:
-            print("⏩ Date not in requested range. Skipping.")
-            continue
+        return news_list
 
-        anchor = time_tag.find_previous("a")
-        if not anchor:
-            print("⚠️ No previous anchor tag found.")
-            continue
+    # первый проход
+    news_list = parse_once()
 
-        title = anchor.get_text(strip=True)
-        href = anchor.get("href")
-        if not href or not title:
-            print("⚠️ Missing title or href. Skipping.")
-            continue
+    # если ничего не собрали — один ретрай
+    if not news_list:
+        print("⚠️ Agroinvestor: empty result, retrying once...")
+        news_list = parse_once()
 
-        url = urljoin(base_url, href.strip())
-        if url in seen_links:
-            print(f"🔁 Duplicate link: {url}")
-            continue
-        seen_links.add(url)
-
-        print(f"✅ Added news: {title} - {url}")
-        news_list.append({
-            "title": title,
-            "link": url
-        })
 
     save_to_drive(output_file, news_list, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
     print(f"💾 Saved {len(news_list)} news items to {output_file}")
@@ -685,17 +683,22 @@ dates = get_last_dates(days_before)
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
-rubrics_kom_rus = [3, 4, 40]
-rubrics_kom_world = [3, 5]
-rubrics_kom_prices = [41]
+#rubrics_kom_econ = [3, 4, 40]
+#rubrics_kom_world = [3, 5]
+#rubrics_kom_marketss = [41] 
+
+rubrics_kom_econ = [3, 4, 40] # 3 - экономика, 4 - бизнеc,  40 - финансы (темы рубрик? для цен топливо в 4 https://www.kommersant.ru/theme/2913 )
+rubrics_kom_world = [5] # 5 - мир 
+rubrics_kom_markets = [41] # 41 - потребительский рынок
+
 rubrics_rbc = ["economics", "business", "finances"]
 rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-fetch_kom(rubrics_kom_rus, dates_kom, "kom_rus.json")
+fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
 fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-fetch_kom(rubrics_kom_prices, dates_kom, "kom_prices.json")
+fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
 fetch_ved(dates_ved, "ved.json")
 
 fetch_rbc(rubrics_rbc, dates, "rbc.json")
@@ -704,7 +707,7 @@ try:
 except Exception as e:
 
     pass
-fetch_rg(rubrics_rg, dates, "rg.json")
+# fetch_rg(rubrics_rg, dates, "rg.json")
 fetch_ria(dates, "ria.json")
 fetch_autostat(dates, "autostat.json", rubrics_auto)
 
@@ -712,7 +715,7 @@ fetch_autostat(dates, "autostat.json", rubrics_auto)
 section_to_files = {
     "world": [
         "kom_world.json",
-        "kom_rus.json",
+        "kom_econ.json",
         "ved.json",
         "rbc.json",
         "agro.json",
@@ -720,16 +723,16 @@ section_to_files = {
         "ria.json"
     ],
     "rus": [
-        "kom_rus.json",
+        "kom_econ.json",
         "ved.json",
         "rbc.json",
         "agro.json",
-        "rg.json",
+        #"rg.json",
         "ria.json"
     ],
     "prices": [
-        "kom_prices.json",
-        "kom_rus.json",
+        "kom_markets.json",
+        "kom_econ.json",
         "ved.json",
         "rbc.json",
         "agro.json",
