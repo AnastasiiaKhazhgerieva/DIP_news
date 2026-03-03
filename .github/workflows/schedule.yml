@@ -30,7 +30,12 @@ jobs:
 
       - name: Run dip_news.py
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          #GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          #PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
           GOOGLE_TOKEN_B64: ${{ secrets.GOOGLE_TOKEN_B64 }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          FOLDERS_SANDBOX: ${{ secrets.FOLDERS_SANDBOX}}
+          FOLDERS_MAIN: ${{ secrets.FOLDERS_MAIN}}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN}}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
         run: python dip_news.py
