@@ -82,6 +82,16 @@ HEADERS = {
     "Sec-Fetch-User": "?1",
 }
 
+
+#PROXY
+
+PROXY = os.environ.get('PROXY')
+proxies = {'https':
+        PROXY
+        }
+
+
+
 encoded_token = os.environ.get("GOOGLE_TOKEN_B64")
 if not encoded_token:
     raise RuntimeError("OAuth токен не найден. Убедитесь, что переменная окружения GOOGLE_TOKEN_B64 задана.")
@@ -340,14 +350,6 @@ def get_proxy_page_soup(url, headers=HEADERS, proxies=proxies, timeout=30):
                         )
     resp.raise_for_status()
     return BeautifulSoup(resp.text, "html.parser")
-
-
-#PROXY
-
-PROXY = os.environ.get('PROXY')
-proxies = {'https':
-        PROXY
-        }
 
 
 ## Scrapers: Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
