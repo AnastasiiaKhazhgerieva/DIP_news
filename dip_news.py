@@ -40,7 +40,7 @@ from pydantic import BaseModel
 
 # Sandbox mode
 # USE_SANDBOX = os.environ.get("USE_SANDBOX", "True").lower() == "true"
-USE_SANDBOX = True  # Set to True to use sandbox folders
+USE_SANDBOX = False  # Set to True to use sandbox folders
 FOLDERS_JSON = os.environ.get("FOLDERS_SANDBOX") if USE_SANDBOX else os.environ.get("FOLDERS_MAIN")
 
 
