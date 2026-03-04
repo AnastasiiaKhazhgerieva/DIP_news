@@ -38,4 +38,5 @@ jobs:
           FOLDERS_MAIN: ${{ secrets.FOLDERS_MAIN}}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN}}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
+          PROXY: ${{ secrets.PROXY}}
         run: python dip_news.py
