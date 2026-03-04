@@ -37,7 +37,27 @@ from typing import List
 from pydantic import BaseModel
 
 # Auxilliary
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/121.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+    ),
+    "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "DNT": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+}
+
 
 encoded_token = os.environ.get("GOOGLE_TOKEN_B64")
 if not encoded_token:
@@ -307,8 +327,6 @@ def fetch_ved(dates, output_file,
 
 # RBC scraper
 
-from datetime import date
-
 def fetch_rbc(rubrics, dates, output_file,
               base_url_template="https://www.rbc.ru/{rubric}/?utm_source=topline"):
 
@@ -404,8 +422,9 @@ def fetch_rbc(rubrics, dates, output_file,
             seen.add(item["url"])
             unique.append(item)
 
-    save_to_drive(output_file, unique, "1INECa_Slues7f8Xm0eJw-c05kLbRXh0Y")
+    save_to_drive(output_file, unique, folder["1 news_jsons"]) # 1 news_jsons
     print(f"Saved RBC data to {output_file}")
+
 
 
 # Agroinvestor scraper 
