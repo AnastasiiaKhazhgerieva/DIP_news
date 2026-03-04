@@ -344,6 +344,13 @@ def get_proxy_page_soup(url, headers=HEADERS, proxies=proxies, timeout=30):
     return BeautifulSoup(resp.text, "html.parser")
 
 
+#PROXY
+
+PROXY = os.environ.get('PROXY')
+proxies = {'https':
+        PROXY
+        }
+
 
 ## Scrapers: Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
@@ -423,7 +430,7 @@ def fetch_rbc(rubrics, dates, output_file,
     for rubric in rubrics:
         page_url = base_url_template.format(rubric=rubric)
         print(f"Fetching RBC, {rubric}: {page_url}")
-        soup = get_page_soup(page_url)
+        soup = get_proxy_page_soup(page_url)
 
         anchors = soup.find_all("a", class_="news-feed__item")
 
@@ -805,8 +812,8 @@ fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
 fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
 fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
 fetch_ved(dates_ved, "ved.json")
-
 fetch_rbc(rubrics_rbc, dates, "rbc.json")
+
 try:
     fetch_agro(dates, "agro.json")
 except Exception as e:
