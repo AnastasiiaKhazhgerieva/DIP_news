@@ -193,8 +193,8 @@ def telegram_lists():
     send_telegram_message(text)
 
 def telegram_bullets():
-    link_bullets = f"https://drive.google.com/drive/folders/{folder['8 news_final']}"
-    text = 'Готовы буллиты к новостной записке. См. отчёты по <a href="{link_bullets}">ссылке</a>'
+    link_bullets = f"https://drive.google.com/drive/folders/{folder["8 news_final"]}"
+    text = f'Готовы буллиты к новостной записке. См. отчёты по <a href="{link_bullets}">ссылке</a>'
     #text = 'Готовы буллиты к новостной записке. См. отчёты по <a href="https://clck.ru/3P9XfR">ссылке</a>' #Mary
     send_telegram_message(text)
     
