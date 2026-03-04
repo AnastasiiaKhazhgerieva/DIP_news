@@ -326,6 +326,8 @@ def fetch_ved(dates, output_file,
     print(f"Saved Vedomosti data to {output_file}")
 
 # RBC scraper
+#requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://www.rbc.ru/economics/?utm_source=topline
+#при этом локально все запускается 
 
 def fetch_rbc(rubrics, dates, output_file,
               base_url_template="https://www.rbc.ru/{rubric}/?utm_source=topline"):
@@ -720,7 +722,12 @@ fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
 fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
 fetch_ved(dates_ved, "ved.json")
 
-fetch_rbc(rubrics_rbc, dates, "rbc.json")
+try:
+    fetch_rbc(rubrics_rbc, dates, "rbc.json")
+except Exception as e:
+
+    pass
+
 try:
     fetch_agro(dates, "agro.json")
 except Exception as e:
