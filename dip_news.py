@@ -91,6 +91,27 @@ proxies = {'https':
         }
 
 
+# Set drive access https://console.cloud.google.com
+# 1. Create
+# 1.1 APIs and Services -> Credentials -> OAuth Client ID (if authorized, else - Servise)
+# (explanation https://sky.pro/wiki/media/kak-ispolzovat-python-dlya-raboty-s-api-google/)
+# 1.2 Client ID for Desktop -> Client secrets -> Dowload json (!avaliable only once while creating)
+# 1.3 Give access to the email on the drive
+
+# 2.Set secret
+# 2.1 APIs and Services -> OAuth consent screen -> Audience -> Publishing Status- Testing -> add yourself to Test users!
+# (https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification?hl=en#projects-used-in-dev-test-stage)
+# 2.2 run 1auth.py than 2encode_token.py 
+# for servisce account change to
+
+# "from google.oauth2 import service_account
+
+# SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+# SERVICE_ACCOUNT_FILE = '/path/to/service.json'
+
+# credentials = service_account.Credentials.from_service_account_file(
+#         SERVICE_ACCOUNT_FILE, scopes=SCOPES)"
+
 
 encoded_token = os.environ.get("GOOGLE_TOKEN_B64")
 if not encoded_token:
