@@ -1707,7 +1707,7 @@ def create_bullets(section):
         assistant_text = choices[0]["message"]["content"]
 
         file_name = f"report_{section}.txt"
-        save_to_drive(file_name, assistant_text, my_folder=folder["8_news_final"], file_format="txt")
+        save_to_drive(file_name, assistant_text, my_folder=folder["8 news_final"], file_format="txt")
         print(f"{section}: буллиты успешно записаны.")
 
     except Exception as e:
