@@ -1,24 +1,28 @@
-name: Ingest Gmail Final Versions
+name: Ingest Gmail Final Versions & Style Update
 
 on:
   schedule:
-    - cron: '53 0 * * 2'  # Вторник 00:53 UTC = 03:53 MSK
+    # Вторник 00:53 UTC = 03:53 MSK
+    - cron: '53 0 * * 2' 
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 jobs:
-  ingest:
+  ingest-and-update:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ---------------------------------------------
+      # ЭТАП 1: Парсинг почты и сохранение финальных текстов
+      # ---------------------------------------------
+      
       - name: Fetch Gmail & save final.txt
-        # Только стандартная библиотека Python, pip не нужен
         env:
           gmail_imap_host: ${{ secrets.gmail_imap_host }}
           gmail_imap_port: ${{ secrets.gmail_imap_port }}
@@ -30,8 +34,46 @@ jobs:
         run: |
           git config user.name "archive-bot"
           git config user.email "archive@githubactions.local"
+          
           git add final_versions/
-          # Коммитим только если есть изменения
+          
+          # Коммитим только если есть новые файлы
           git diff --cached --quiet || git commit -m "📩 Email archive ($(date +%Y-%m-%d))"
+          
           git pull --rebase origin main
           git push origin main
+
+      # ---------------------------------------------
+      # ЭТАП 2: Анализ стиля и обновление corrections.txt
+      # ---------------------------------------------
+
+      - name: Set up Python for style analysis
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          # Обновляем setuptools и устанавливаем все нужные либы (включая requests)
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Analyze drafts & update corrections.txt
+        env:
+          # Ключ для DeepSeek должен быть в Secrets репозитория
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python update_style_rules.py
+
+      - name: Commit updated corrections
+        run: |
+          git config user.name "style-bot"
+          git config user.email "style-bot@githubactions.local"
+          
+          git add corrections/corrections.txt
+          
+          if ! git diff --cached --quiet; then
+             git commit -m "🧠 Updated style rules base ($(date +%Y-%m-%d))"
+             git push origin main
+          else
+             echo "ℹ️ Corrections.txt не изменилась."
+          fi
