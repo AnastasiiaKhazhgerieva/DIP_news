@@ -71,7 +71,8 @@ def process_email(imap, e_id):
         charset = msg.get_content_charset() or 'utf-8'
         if payload:
             text_parts.append(payload.decode(charset, errors='ignore'))
-
+            
+    marker = "Новости о состоянии экономики и ключевых отраслей"
     full_text = "\n".join(text_parts).strip()
     
     if marker not in full_text:
