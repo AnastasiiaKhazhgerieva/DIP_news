@@ -1,0 +1,37 @@
+name: Ingest Gmail Final Versions
+
+on:
+  schedule:
+    - cron: '53 0 * * 2'  # Вторник 00:53 UTC = 03:53 MSK
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch Gmail & save final.txt
+        # Только стандартная библиотека Python, pip не нужен
+        env:
+          gmail_imap_host: ${{ secrets.gmail_imap_host }}
+          gmail_imap_port: ${{ secrets.gmail_imap_port }}
+          gmail_user: ${{ secrets.gmail_user }}
+          gmail_password: ${{ secrets.gmail_password }}
+        run: python fetch_gmail.py
+
+      - name: Commit & push final versions
+        run: |
+          git config user.name "archive-bot"
+          git config user.email "archive@githubactions.local"
+          git add final_versions/
+          # Коммитим только если есть изменения
+          git diff --cached --quiet || git commit -m "📩 Email archive ($(date +%Y-%m-%d))"
+          git pull --rebase origin main
+          git push origin main
