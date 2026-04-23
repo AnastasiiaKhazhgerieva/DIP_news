@@ -3,7 +3,7 @@ import email
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def decode_mime_words(s):
     """Безопасно декодирует тему и заголовки письма"""
