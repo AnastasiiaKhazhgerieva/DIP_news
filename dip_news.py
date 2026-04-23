@@ -1708,6 +1708,13 @@ def create_bullets(section):
 
         file_name = f"report_{section}.txt"
         save_to_drive(file_name, assistant_text, my_folder=folder["8 news_final"], file_format="txt")
+
+         # Сохраняем в локальный файл для архивации
+        local_filename = f"report_{section}.txt"
+        with open(local_filename, "w", encoding="utf-8") as f_local:
+            f_local.write(assistant_text)
+        print(f"Локально сохранено: {local_filename}")
+        
         print(f"{section}: буллиты успешно записаны.")
 
     except Exception as e:
@@ -1721,3 +1728,27 @@ if datetime.today().weekday() == 3: ###################3 - Thu
     time.sleep(60)
     create_bullets("prices")
     telegram_bullets()
+    # Собираем primary версию до корректировок, чтобы потом сравнить с итоговой
+    folder_name = "primary_versions"
+    os.makedirs(folder_name, exist_ok=True) # Папка появится автоматически
+    
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    final_file_path = os.path.join(folder_name, f"{today_str}_primary.txt")
+    
+    print(f"Начинаю создание итогового файла: {final_file_path}")
+
+    with open(final_file_path, "w", encoding="utf-8") as final_f:
+        for sec in sections:
+            source_file = f"report_{sec}.txt"
+            if os.path.exists(source_file):
+                with open(source_file, "r", encoding="utf-8") as src_f:
+                    content = src_f.read()
+                    final_f.write(f"\n\n{'#' * 30}\n")
+                    final_f.write(f"# РАЗДЕЛ: {sec.upper()} \n")
+                    final_f.write(f"{'#' * 30}\n\n")
+                    final_f.write(content)
+                    print(f"Добавлена секция: {sec}")
+            else:
+                print(f"❌ Пропускаю {source_file} (не найден)")
+
+    print(f"Итоговый файл создан: {final_file_path}")
