@@ -8,12 +8,13 @@ on:
     - cron: '30 7 * * Fri'
     # В остальные дни (понедельник, вторник, четверг, суббота, воскресенье) в 14:00 MSK → 11:00 UTC
     - cron: '0 11 * * Mon,Tue,Thu,Sat,Sun'
+    # Вторник в 03:53 MSK → 00:53 UTC
+    - cron: '53 0 * * 2'
   workflow_dispatch: {}
 
 jobs:
   run-dip-news:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -40,3 +41,30 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
           PROXY: ${{ secrets.PROXY}}
         run: python dip_news.py
+
+  ingest-gmail-final:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch Gmail & save final.txt
+        # Не требует pip install, fetch_gmail.py использует только стандартные библиотеки Python
+        env:
+          gmail_imap_host: ${{ secrets.gmail_imap_host }}
+          gmail_imap_port: ${{ secrets.gmail_imap_port }}
+          gmail_user: ${{ secrets.gmail_user }}
+          gmail_password: ${{ secrets.gmail_password }}
+        run: python fetch_gmail.py
+
+      - name: Commit & push final versions
+        run: |
+          git config user.name "email-bot"
+          git config user.email "archive-bot@githubactions.local"
+          git add final_versions/
+          # Коммитим только если есть новые файлы
+          git diff --cached --quiet || git commit -m "📩 Ingested final versions from email ($(date +%Y-%m-%d))"
+          git pull --rebase origin main
+          git push origin main
