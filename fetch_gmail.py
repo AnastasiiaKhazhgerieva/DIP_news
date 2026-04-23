@@ -50,18 +50,12 @@ def process_email(imap, e_id):
         mark_seen(imap, e_id)
         return
 
-    # 2. Дата письма (из заголовка или сегодняшняя)
-    date_header = msg.get('Date')
-    if date_header:
-        try:
-            dt = parsedate_to_datetime(date_header)
-            date_str = dt.strftime('%Y-%m-%d')
-        except Exception:
-            date_str = datetime.now().strftime('%Y-%m-%d')
-    else:
-        date_str = datetime.now().strftime('%Y-%m-%d')
+    # 2. Дата, которую напишем в заголовок:
+    base_date = datetime.now()
+    target_date = base_date - timedelta(days=5)
+    date_str = target_date.strftime('%Y-%m-%d')
 
-    # 3. Извлекаем ТОЛЬКО plain-text, игнорируя вложения и HTML
+    # 3. Извлекаем ТОЛЬКО plain-text (без вложений)
     text_parts = []
     if msg.is_multipart():
         for part in msg.walk():
@@ -70,7 +64,8 @@ def process_email(imap, e_id):
             if ctype == 'text/plain' and 'attachment' not in cd:
                 payload = part.get_payload(decode=True)
                 charset = part.get_content_charset() or 'utf-8'
-                text_parts.append(payload.decode(charset, errors='ignore'))
+                if payload:
+                    text_parts.append(payload.decode(charset, errors='ignore'))
     else:
         payload = msg.get_payload(decode=True)
         charset = msg.get_content_charset() or 'utf-8'
@@ -78,26 +73,31 @@ def process_email(imap, e_id):
             text_parts.append(payload.decode(charset, errors='ignore'))
 
     full_text = "\n".join(text_parts).strip()
-    if not full_text or len(full_text) < 30:
-        print("⚠️ Текст пустой или слишком короткий, пропускаю")
+    
+    if marker not in full_text:
+        print(f"❌ Пропускаю письмо: не найден маркер '{marker}'")
         mark_seen(imap, e_id)
         return
 
+    # Берем только то, что ПОСЛЕ
+    final_content = full_text.split(marker)[1].strip()
+
+    if len(final_content) < 30:
+        print("⚠️ Текст после маркера слишком короткий, пропускаю")
+        mark_seen(imap, e_id)
+        return
+        
     # 4. Сохраняем в одну корневую папку
     TARGET_FOLDER = "final_versions"
     os.makedirs(TARGET_FOLDER, exist_ok=True)
 
     # Безопасное имя файла: дата + порядковый номер
-    counter = 1
-    file_name = f"{date_str}_{counter}.txt"
-    while os.path.exists(os.path.join(TARGET_FOLDER, file_name)):
-        counter += 1
-        file_name = f"{date_str}_{counter}.txt"
+    file_name = f"{date_str}_final.txt"
     file_path = os.path.join(TARGET_FOLDER, file_name)
 
     with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(full_text)
-    print(f"✅ Сохранено: {file_path} ({len(full_text)} символов)")
+        f.write(final_content)
+    print(f"✅ Сохранено: {file_path} ({len(final_content)} символов)")
 
     mark_seen(imap, e_id)
 
