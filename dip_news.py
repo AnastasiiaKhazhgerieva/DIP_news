@@ -970,11 +970,146 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-try:
-    design_wo_llm("prices")
-except Exception as e:
-    design("prices")
+#for section in ["world", "rus", "prices"]:
+#    try:
+#        design_wo_llm(section)
+#    except Exception as e:
+#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+#        design(section)
+#        time.sleep(60)
+#telegram_lists()
 
+
+class NewsItem(BaseModel):
+    theme: str
+    title: str
+    url: str
+
+def choose_top_urls(section):
+    file_name = f"{section}.json"
+    folder_id = folder["2 4 new_lists_json"] # 2 4 
+    try:
+        file_id = find_file_in_drive(file_name, folder_id)
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
+        return
+    except Exception as e:
+        print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
+        return
+    if not news_list_raw.strip():
+        print(f"❌ Файл {file_name} пустой.")
+        return
+
+    prompt_top = top_prompts.get(section, "")
+    system_content = (
+        "Анализируй предоставленный список новостей и выдели 4 ключевые темы. Верни список объектов с полями theme, title, url для каждой новости."
+    )
+#     system_content = (
+#     "Анализируй предоставленный список новостей и выдели 4 ключевые темы. "
+#     "Верни JSON массив объектов с полями theme, title, url для каждой новости. "
+#     "Формат: [{\"theme\": \"...\", \"title\": \"...\", \"url\": \"...\"}, ...]"
+# )
+
+
+
+
+    prompt_text = "\n".join([str(prompt_top), news_list_raw])
+
+    try:
+        payload = {
+            "model": "qwen/qwen-2.5-72b-instruct", 
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_content
+                },
+                {
+                    "role": "user",
+                    "content": prompt_text
+                }
+            ],
+            "temperature": 0.2,
+            "response_format": {
+                "type": "json_object"
+            }
+        }
+
+        # payload = {
+        #     "model": "sonar-pro", 
+        #     "messages": [
+        #         {
+        #             "role": "system",
+        #             "content": system_content
+        #         },
+        #         {
+        #             "role": "user",
+        #             "content": prompt_text
+        #         }
+        #     ],
+        #     "temperature": 0.2,
+        #     "disable_search": True,
+        #     "response_format": {
+        #         "type": "json_schema",
+        #         "json_schema": {
+        #             "schema": {
+        #                 "type": "array",
+        #                 "items": NewsItem.model_json_schema()
+        #             }
+        #         }
+        #     }
+        # }
+        
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        choices = result.get("choices")
+        if not choices:
+            print("❌ В ответе API нет поля 'choices'.")
+            return
+        
+        content = choices[0]["message"]["content"]
+        if not content:
+            print("❌ Модель вернула пустой ответ.")
+            return
+            
+        # Парсим JSON и валидируем через Pydantic
+        import json
+        data = json.loads(content)
+        
+        # Валидируем каждый элемент через Pydantic
+        valid_output = []
+        for item_data in data:
+            try:
+                news_item = NewsItem.model_validate(item_data)
+                valid_output.append({
+                    "theme": news_item.theme,
+                    "title": news_item.title,
+                    "url": news_item.url
+                })
+            except Exception as e:
+                print(f"⚠️ Пропускаем невалидный элемент: {e}")
+                continue
+                
+        if not valid_output:
+            print("❌ Итоговый JSON пуст.")
+            return
+            
+    except Exception as e:
+        print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
+        return
+    
+    output_folder_id = folder["6 news_top"] # 6 news top
+    save_to_drive(file_name, valid_output, output_folder_id, file_format="json")
+    print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
+
+
+if datetime.today().weekday() == 3: ################### 3 - Thu
+    #choose_top_urls("world")
+    #time.sleep(60)
+    #choose_top_urls("rus")
+    #time.sleep(60)
+    choose_top_urls("prices")
 
 
 
