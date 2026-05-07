@@ -798,7 +798,7 @@ def prioritise(section):
     
     try:
         payload = {
-            "model": "qwen/qwen3-235b-a22b-thinking-2507",
+            "model": "qwen/qwen-2.5-72b-instruct",
             "messages": [
                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
