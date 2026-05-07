@@ -374,6 +374,484 @@ def get_proxy_page_soup(url, headers=HEADERS, proxies=proxies, timeout=30):
     resp.raise_for_status()
     return BeautifulSoup(resp.text, "html.parser")
 
+## Scrapers: Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
+
+# Kommersant scraper
+def fetch_kom(rubrics, dates, output_file,
+                   base_url_template="https://www.kommersant.ru/archive/rubric/{rubric}/day/{date}"):
+    all_items = []
+    seen_urls = set()
+
+    for rubric in rubrics:
+        for dt in dates:
+            url = base_url_template.format(rubric=rubric, date=dt)
+            print(f"Fetching Kommersant: {url}")
+            try:
+                soup = get_page_soup(url)
+                scripts = soup.find_all("script", type="application/ld+json")
+
+                for script in scripts:
+                    raw = script.string
+                    if not raw:
+                        continue
+                    try:
+                        data = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+
+                    for entry in data.get("itemListElement", []):
+                        title = entry.get("name") or entry.get("headline")
+                        link = entry.get("url")
+                        if title and link and link not in seen_urls:
+                            seen_urls.add(link)
+                            all_items.append({"title": title, "url": link})
+            except Exception as e:
+                print(f"[ERROR] {e} when fetching {url}")
+
+    save_to_drive(output_file, all_items, folder["1 news_jsons"]) # 1 news_jsons
+    print(f"Saved Kommersant data to {output_file}")
+
+
+# Vedomosti scraper
+def fetch_ved(dates, output_file,
+              base_url_template="https://www.vedomosti.ru/newspaper/{date}"):
+    all_news = []
+    for dt in dates:
+        url = base_url_template.format(date=dt)
+        print(f"Fetching Vedomosti: {url}")
+        try:
+            soup = get_page_soup(url)
+            for item in soup.select("li.waterfall__item"):
+                a = item.select_one("a.waterfall__item-title")
+                if not a:
+                    continue
+                title = a.get_text(strip=True)
+                href = a.get("href", "")
+                full_url = href if href.startswith("http") else f"https://www.vedomosti.ru{href}"
+                all_news.append({"title": title, "url": full_url})
+        except Exception as e:
+            all_news.append({"error": str(e)})
+
+    save_to_drive(output_file, all_news, folder["1 news_jsons"]) # 1 news_jsons
+    print(f"Saved Vedomosti data to {output_file}")
+
+
+# RBC scraper
+
+def fetch_rbc(rubrics, dates, output_file,
+              base_url_template="https://www.rbc.ru/{rubric}/?utm_source=topline"):
+
+    ru_months = {
+        'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4,
+        'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8,
+        'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12
+    }
+    today = date.today()
+    collected = []
+
+    for rubric in rubrics:
+        page_url = base_url_template.format(rubric=rubric)
+        print(f"Fetching RBC, {rubric}: {page_url}")
+        soup = get_proxy_page_soup(page_url)
+
+        anchors = soup.find_all("a", class_="news-feed__item")
+
+        for idx, a in enumerate(anchors, start=1):
+            # внутри anchor ищем span, у которого class содержит "news-feed__item__title"
+            title_span = a.find(
+                "span",
+                class_=lambda c: c and "news-feed__item__title" in c
+            )
+            if not title_span:
+                continue
+
+            # Для даты: ищем span, у которого class содержит "news-feed__item__time"
+            # или, если нет, "news-feed__item__date"
+            date_span = a.find(
+                "span",
+                class_=lambda c: c and "news-feed__item__time" in c
+            )
+            if not date_span:
+                date_span = a.find(
+                    "span",
+                    class_=lambda c: c and "news-feed__item__date" in c
+                )
+            if not date_span:
+                continue
+
+            title = title_span.get_text(strip=True)
+            href = a.get("href", "").strip()
+            if not href:
+                continue
+
+            full_url = href if href.startswith("http") else urljoin(page_url, href)
+
+            # raw_date может быть вида "28 мая 17:52" или просто "17:52"
+            raw_date = date_span.get_text(strip=True).replace("\xa0", " ").replace(",", "").strip()
+            parts = raw_date.split()
+
+            news_date = None
+            if any(month in parts for month in ru_months):
+                # формат ["28","мая","17:52"] или ["28","мая","2025","17:52"]
+                try:
+                    day = int(parts[0])
+                except ValueError:
+                    continue
+                month_name = parts[1].lower()
+                if month_name not in ru_months:
+                    continue
+                month = ru_months[month_name]
+                year = today.year
+                # если в parts[2] четвёрка цифр, считаем, что это год
+                if len(parts) >= 3 and parts[2].isdigit() and len(parts[2]) == 4:
+                    year = int(parts[2])
+                try:
+                    candidate = datetime.date(year, month, day)
+                except ValueError:
+                    continue
+                # если эта дата уже в будущем, значит, год был прошлый
+                if candidate > today:
+                    candidate = datetime.date(year - 1, month, day)
+                news_date = candidate
+            else:
+                # если нет названия месяца, значит raw_date = "HH:MM" сегодняшняя дата
+                news_date = today
+
+            if news_date not in dates:
+                continue
+
+            collected.append({
+                "title": title,
+                "url": full_url
+            })
+
+    # убираем дубликаты по URL
+    unique = []
+    seen = set()
+    for item in collected:
+        if item["url"] not in seen:
+            seen.add(item["url"])
+            unique.append(item)
+
+    save_to_drive(output_file, unique, folder["1 news_jsons"]) # 1 news_jsons
+    print(f"Saved RBC data to {output_file}")
+
+
+
+# Agroinvestor scraper
+
+def fetch_agro(dates, output_file,
+               base_url="https://www.agroinvestor.ru/news/"):
+    base_domain = "https://www.agroinvestor.ru"
+    ru_months = {
+        "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
+        "мая": 5, "июня": 6, "июля": 7, "августа": 8,
+        "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
+    }
+
+    def parse_once() -> list:
+        soup = get_page_soup(base_url)
+        if soup is None:
+            print("❌ Failed to retrieve or parse the page.")
+            return []
+
+        news_list = []
+        seen_urls = set()
+
+        for block in soup.select("div.news__item-info"):
+            a = block.find("a", class_="news__item-desc")
+            if not a:
+                continue
+            href = a.get("href", "").strip()
+            if not href:
+                continue
+            full_url = href if href.startswith("http") else base_domain + href
+            if full_url in seen_urls:
+                continue
+
+            h3 = a.find("h3")
+            if not h3:
+                continue
+            title = h3.get_text(strip=True)
+            if not title:
+                continue
+
+            time_tag = block.find("time")
+            if not time_tag:
+                continue
+            date_text = time_tag.get_text(strip=True).replace("\xa0", " ")
+            parts = date_text.split()
+            if len(parts) != 3:
+                continue
+            day_str, month_str, year_str = parts
+            try:
+                day = int(day_str)
+                year = int(year_str)
+            except ValueError:
+                continue
+            month_str = month_str.lower()
+            if month_str not in ru_months:
+                continue
+            month = ru_months[month_str]
+            try:
+                news_date = date(year, month, day)
+            except ValueError:
+                continue
+
+            if news_date not in dates:
+                continue
+
+            seen_urls.add(full_url)
+            news_list.append({
+                "title": title,
+                "url": full_url,
+            })
+
+        return news_list
+
+    # первый проход
+    news_list = parse_once()
+
+    # если ничего не собрали — один ретрай
+    if not news_list:
+        print("⚠️ Agroinvestor: empty result, retrying once...")
+        news_list = parse_once()
+
+    save_to_drive(output_file, news_list, folder["1 news_jsons"]) # 1 news_jsons
+    print(f"Saved {len(news_list)} Agroinvestor items to {output_file}")
+
+
+
+# RG.ru scraper
+
+def fetch_rg(rubrics, dates, output_file,
+             base_url_template="https://rg.ru/tema/ekonomika/{rubric}"):
+    all_news = []
+    for rubric in rubrics:
+        url = base_url_template.format(rubric=rubric)
+        print(f"Fetching RG, {rubric}: {url}")
+        soup = get_proxy_page_soup(url)
+        for title_span in soup.find_all("span", class_="ItemOfListStandard_title__Ajjlf"):
+            parent_a = title_span.find_parent("a")
+            if not parent_a:
+                continue
+            href = parent_a.get("href", "").strip()
+            if not href:
+                continue
+            full_url = href if href.startswith("http") else f"https://rg.ru{href}"
+
+            date_a = title_span.find_previous("a", class_="ItemOfListStandard_datetime__GstJi")
+            if not date_a:
+                continue
+            date_href = date_a.get("href", "").strip()
+            parts = date_href.strip("/").split("/")  # ['2025','05','30',...]
+            if len(parts) < 3:
+                continue
+            try:
+                y, m, d = map(int, parts[:3])
+                news_date = date(y, m, d)
+            except ValueError:
+                continue
+
+            if news_date not in dates:
+                continue
+
+            all_news.append({
+                "title": title_span.get_text(strip=True),
+                "url": full_url
+            })
+
+    unique = []
+    seen = set()
+    for item in all_news:
+        if item["url"] not in seen:
+            seen.add(item["url"])
+            unique.append(item)
+
+    save_to_drive(output_file, unique, folder["1 news_jsons"]) # 1 news_jsons
+    print(f"Saved RG data to {output_file}")
+
+
+# RIA scraper
+
+# RIA scraper
+
+def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
+    print("Fetching RIA: https://ria.ru/economy/")
+    soup = get_page_soup(base_url_template)
+    collected = []
+
+    # Each news item has <a itemprop="url" href="..."></a>
+    for a in soup.find_all("a", itemprop="url"):
+        href = a.get("href", "").strip()
+        if not href:
+            continue
+        full_url = href if href.startswith("http") else f"https://ria.ru{href}"
+
+        # Next meta tag with itemprop="name" holds the title
+        name_meta = a.find_next("meta", itemprop="name")
+        if not name_meta:
+            continue
+        title = name_meta.get("content", "").strip()
+        if not title:
+            continue
+        parsed = urlparse(full_url)
+        parts = parsed.path.lstrip("/").split("/")
+        if not parts or len(parts[0]) != 8 or not parts[0].isdigit():
+            continue
+        y, m, d = int(parts[0][:4]), int(parts[0][4:6]), int(parts[0][6:8])
+        try:
+            news_date = date(y, m, d)
+        except ValueError:
+            continue
+
+        if news_date in dates:
+            collected.append({
+                "title": title,
+                "url": full_url
+            })
+
+    unique = []
+    seen = set()
+    for item in collected:
+        if item["url"] not in seen:
+            seen.add(item["url"])
+            unique.append(item)
+
+    save_to_drive(output_file, unique, folder["1 news_jsons"]) # 1 news_jsons
+
+    print(f"Saved RIA data to {output_file}")
+
+
+
+# Autostat scraper
+
+def fetch_autostat(dates, output_file,
+                   rubrics=[21, 8, 13, 70, 71],
+                   base_url_template="https://m.autostat.ru/news/themes-{rubric}/"):
+
+    if dates is None:
+        raise ValueError("Argument 'dates' must be provided as a list of datetime.date objects.")
+
+    all_collected = []
+    seen_urls = set()
+
+    ru_months = {
+        'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4,
+        'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8,
+        'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12
+    }
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    for rubric in rubrics:
+        url = base_url_template.format(rubric=rubric)
+        print(f"Fetching Autostat, {rubric}: {url}")
+        soup = get_page_soup(url)
+        if not soup:
+            print(f"  (!) Failed to retrieve or parse page for rubric {rubric}")
+            continue
+
+        titles = soup.find_all("p", class_="Block-title")
+        if not titles:
+            print(f"    (!) No <p class='Block-title'> elements found on {url}")
+            continue
+
+        for title_p in titles:
+            title = title_p.get_text(strip=True)
+            if not title:
+                continue
+
+            link_a = title_p.find_parent("a", class_="Block-link")
+            if not link_a:
+                continue
+            href = link_a.get("href", "").strip()
+            if not href:
+                continue
+            full_url = urljoin("https://www.autostat.ru", href)
+
+            date_p = title_p.find_next("p", class_="Block-date")
+            if not date_p:
+                continue
+            date_text = date_p.get_text(strip=True)  # e.g. "Сегодня, 15:48" or "28 мая, 15:48"
+            date_part = date_text.split(",")[0].strip().lower()
+
+            if date_part == "сегодня":
+                news_date = today
+            elif date_part == "вчера":
+                news_date = yesterday
+            else:
+                parts = date_part.split()
+                if len(parts) != 2:
+                    continue
+                day_str, month_str = parts
+                try:
+                    day = int(day_str)
+                    month = ru_months.get(month_str)
+                    if not month:
+                        continue
+                    news_date = date(today.year, month, day)
+                    if news_date > today:
+                        news_date = date(today.year - 1, month, day)
+                except Exception:
+                    continue
+
+            if news_date in dates and full_url not in seen_urls:
+                all_collected.append({
+                    "title": title,
+                    "url": full_url
+                })
+                seen_urls.add(full_url)
+
+    save_to_drive(output_file, all_collected, folder["1 news_jsons"]) # 1 news_jsons
+
+    print(f"Saved Autostat data to {output_file}")
+
+#with open('agro.json', encoding='utf-8') as f:
+#    data = json.load(f)
+#print(json.dumps(data, ensure_ascii=False, indent=2))
+
+# Parameters
+days_before = 1
+dates = get_last_dates(days_before)
+dates_kom = format_dates(dates, fmt="%Y-%m-%d")
+dates_ved = format_dates(dates, fmt="%Y/%m/%d")
+
+#rubrics_kom_econ = [3, 4, 40]
+#rubrics_kom_world = [3, 5]
+#rubrics_kom_marketss = [41] 
+
+rubrics_kom_econ = [3, 4, 40] # 3 - экономика, 4 - бизнеc,  40 - финансы (темы рубрик? для цен топливо в 4 https://www.kommersant.ru/theme/2913 )
+rubrics_kom_world = [5] # 5 - мир 
+rubrics_kom_markets = [41] # 41 - потребительский рынок
+
+rubrics_rbc = ["economics", "business", "finances"]
+rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
+rubrics_auto = [21, 8, 13, 70, 71]
+
+# Fetching
+fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
+fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
+fetch_ved(dates_ved, "ved.json")
+fetch_rbc(rubrics_rbc, dates, "rbc.json")
+
+try:
+    fetch_agro(dates, "agro.json")
+except Exception as e:
+
+    pass
+    
+# fetch_rg(rubrics_rg, dates, "rg.json")
+try:
+    fetch_rg(rubrics_rg, dates, "rg.json")
+except Exception as e:
+
+    pass
+
+fetch_ria(dates, "ria.json")
+fetch_autostat(dates, "autostat.json", rubrics_auto)
+
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
     "world": [
@@ -404,8 +882,6 @@ section_to_files = {
         "autostat.json"
     ]
 }
-
-## Scrapers: Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
 # Prompts
 
@@ -767,11 +1243,11 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-#create_news_lists("world")
-#time.sleep(60)
-#create_news_lists("rus")
-#time.sleep(60)
-#create_news_lists("prices")
+create_news_lists("world")
+time.sleep(60)
+create_news_lists("rus")
+time.sleep(60)
+create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
@@ -869,11 +1345,11 @@ def prioritise(section):
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 
-#prioritise("world")
-#time.sleep(60)
-#prioritise("rus")
-#time.sleep(60)
-#prioritise("prices")
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
+prioritise("prices")
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
@@ -970,14 +1446,14 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-#for section in ["world", "rus", "prices"]:
-#    try:
-#        design_wo_llm(section)
-#    except Exception as e:
-#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-#        design(section)
-#        time.sleep(60)
-#telegram_lists()
+for section in ["world", "rus", "prices"]:
+    try:
+        design_wo_llm(section)
+    except Exception as e:
+        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+        design(section)
+        time.sleep(60)
+telegram_lists()
 
 
 class NewsItem(BaseModel):
@@ -1104,12 +1580,12 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-#if datetime.today().weekday() == 3: ################### 3 - Thu
-    #choose_top_urls("world")
-    #time.sleep(60)
-    #choose_top_urls("rus")
-    #time.sleep(60)
-    #choose_top_urls("prices")
+if datetime.today().weekday() == 3: ################### 3 - Thu
+    choose_top_urls("world")
+    time.sleep(60)
+    choose_top_urls("rus")
+    time.sleep(60)
+    choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
     def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
@@ -1173,10 +1649,10 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-#if datetime.today().weekday() == 3: ##################3 - Thu
-    #read_top_urls("world")
-    #read_top_urls("rus")
-    #read_top_urls("prices")
+if datetime.today().weekday() == 3: ##################3 - Thu
+    read_top_urls("world")
+    read_top_urls("rus")
+    read_top_urls("prices")
 
 
 def create_bullets(section):
@@ -1245,10 +1721,10 @@ def create_bullets(section):
         return
 
 if datetime.today().weekday() == 3: ###################3 - Thu
-    #create_bullets("world")
-    #time.sleep(60)
-    #create_bullets("rus")
-    #time.sleep(60)
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
     create_bullets("prices")
-    #telegram_bullets()
+    telegram_bullets()
     
