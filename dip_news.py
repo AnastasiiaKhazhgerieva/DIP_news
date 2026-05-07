@@ -1155,7 +1155,7 @@ def create_news_lists(section):
         # Запрос к DeepSeek API
         try:
             payload = {
-                "model": "deepseek-chat",
+                "model": "deepseek/deepseek-chat-v3-0324",
                 "messages": [
                     {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                     {"role": "user", "content": "\n".join(prompt_parts)}
@@ -1277,7 +1277,7 @@ def prioritise(section):
     
     try:
         payload = {
-            "model": "deepseek-chat",
+            "model": "deepseek/deepseek-chat-v3-0324",
            "messages": [
                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
@@ -1413,7 +1413,7 @@ def design(section):
     prompt_text = "\n".join(prompt_parts)
     try:
         payload = {
-            "model": "deepseek-chat",
+            "model": "deepseek/deepseek-chat-v3-0324",
             "messages": [
                 {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
