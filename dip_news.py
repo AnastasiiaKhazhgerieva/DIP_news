@@ -1277,7 +1277,7 @@ def prioritise(section):
     
     try:
         payload = {
-            "model": "deepseek/deepseek-chat-v3-0324",
+            "model": "qwen/qwen3-235b-a22b-thinking-2507",
            "messages": [
                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
@@ -1498,7 +1498,7 @@ def choose_top_urls(section):
 
     try:
         payload = {
-            "model": "deepseek-chat", 
+            "model": "qwen/qwen3-235b-a22b-thinking-2507", 
             "messages": [
                 {
                     "role": "system",
@@ -1679,7 +1679,7 @@ def create_bullets(section):
 
     try:
         payload = {
-            "model": "deepseek-chat",
+            "model": "qwen/qwen3-235b-a22b-thinking-2507",
             "messages": [
                 {"role": "system", "content": "Отвечай лаконично и информативно."},
                 {"role": "user", "content": prompt_text}
