@@ -767,8 +767,111 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
+#create_news_lists("world")
+#time.sleep(60)
+#create_news_lists("rus")
+#time.sleep(60)
+#create_news_lists("prices")
+
+def prioritise(section):
+    file_name = f"{section}.json"
+    folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
+    temp_folder_id = folder["3 news_lists_json_grade"] # 3 grade
+    combined_items = []
+    # Загружаем файл с новостями
+    try:
+        file_id = find_file_in_drive(file_name, folder_id)
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
+        return
+    except Exception as e:
+        print(f"❌ Ошибка при загрузке файла {file_name}: {e}")
+        return
+    if not news_list_raw.strip():
+        print(f"❌ Файл {file_name} пустой.")
+        return
+    # Готовим prompt
+    prompt_prioritise = prioritise_prompts.get(section, "")
+    prompt_text = "\n".join([str(prompt_prioritise), news_list_raw])
+    
+    try:
+        payload = {
+            "model": "qwen/qwen3-235b-a22b-thinking-2507",
+           "messages": [
+               {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка. Но чтобы разобраться в сути новостей, читай их, открывая ссылки."},
+                {"role": "user", "content": prompt_text}
+             ],
+            "temperature": 0.2,
+            "response_format": {"type": "json_object"}
+        }
+    
+    # try:
+    #     payload = {
+    #         "model": "sonar-pro",
+    #         "messages": [
+    #             {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
+    #             {"role": "user", "content": prompt_text}
+    #         ],
+    #         "temperature": 0.2,
+    #         "response_mime_type": "application/json",
+    #         "disable_search": True
+    #     }
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        
+        
+        # Проверка ответа
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"❌ Модель не вернула ответ для '{file_name}'.")
+            return
+        
+        assistant_json_str = choices[0]["message"]["content"]
+        # Отладка - вывод ответа модели перед парсингом JSON
+        print("DEBUG: Ответ модели (первые 3000 символов):")
+        print(assistant_json_str[:3000])
+        
+        try:
+            items = json.loads(assistant_json_str)
+        except json.JSONDecodeError as e:
+            print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
+            return
+        if isinstance(items, dict):
+            items = [items]
+        if not isinstance(items, list):
+            print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
+            return
+        
+        # Сохраняем полный ответ в отдельную папку
+        save_to_drive(file_name, items, temp_folder_id, file_format="json")
+        # Обработка с grade
+        if all(isinstance(entry, dict) and "grade" in entry for entry in items):
+            items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
+            items_top40 = items_sorted[:40]
+            combined_items = [
+                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                for e in items_top40 if e.get("url")
+            ]
+        else:
+            # Нет grade — берем первые 40 записей с валидным url
+            combined_items = [
+                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                for e in items if e.get("url")
+            ][:40]
+    except Exception as e:
+        print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
+        return
+    # Сохраняем итоговый результат в исходную папку
+    save_to_drive(file_name, combined_items, folder_id, file_format="json")
+    print(f"✅ prioritise({section}) — сохранён корректный JSON.")
+
+
+#prioritise("world")
+#time.sleep(60)
+#prioritise("rus")
+#time.sleep(60)
+prioritise("prices")
+
+
