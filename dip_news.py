@@ -794,12 +794,13 @@ def prioritise(section):
     # Готовим prompt
     prompt_prioritise = prioritise_prompts.get(section, "")
     prompt_text = "\n".join([str(prompt_prioritise), news_list_raw])
+    print(prompt_text[:3000])
     
     try:
         payload = {
             "model": "qwen/qwen3-235b-a22b-thinking-2507",
-           "messages": [
-               {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка. Но чтобы разобраться в сути новостей, читай их, открывая ссылки."},
+            "messages": [
+               {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
              ],
             "temperature": 0.2,
