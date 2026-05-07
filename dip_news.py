@@ -1279,10 +1279,10 @@ def prioritise(section):
         payload = {
             "model": "qwen/qwen3-235b-a22b-thinking-2507",
            "messages": [
-               {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
+               {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка. Но чтобы разобраться в сути новостей, читай их, открывая ссылки."},
                 {"role": "user", "content": prompt_text}
              ],
-            "temperature": 0.2,
+            "temperature": 0.5,
             "response_format": {"type": "json_object"}
         }
     
@@ -1482,8 +1482,7 @@ def choose_top_urls(section):
 
     prompt_top = top_prompts.get(section, "")
     system_content = (
-        "Анализируй предоставленный список новостей и выдели 4 ключевые темы."
-        "Верни список объектов с полями theme, title, url для каждой новости."
+        "Анализируй предоставленный список новостей и выдели 4 ключевые темы. Верни список объектов с полями theme, title, url для каждой новости."
     )
 #     system_content = (
 #     "Анализируй предоставленный список новостей и выдели 4 ключевые темы. "
@@ -1509,7 +1508,7 @@ def choose_top_urls(section):
                     "content": prompt_text
                 }
             ],
-            "temperature": 0.2,
+            "temperature": 0.8,
             "response_format": {
                 "type": "json_object"
             }
