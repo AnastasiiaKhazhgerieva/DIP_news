@@ -1173,8 +1173,82 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 3: ##################3 - Thu
+#if datetime.today().weekday() == 3: ##################3 - Thu
     #read_top_urls("world")
     #read_top_urls("rus")
-    read_top_urls("prices")
+    #read_top_urls("prices")
 
+
+def create_bullets(section):
+    list_file = f"{section}.json"
+    try:
+        file_id = find_file_in_drive(list_file, folder["7 news_top_texts"]) # 7 news_top_texts
+        list_content = download_text_file(file_id)
+    except Exception as e:
+        print(f"Ошибка загрузки файла {list_file}: {e}")
+        return
+
+    # Если пришёл JSON, делаем красиво (отступы для читаемости)
+    try:
+        parsed_json = json.loads(list_content)
+        pretty_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
+    except json.JSONDecodeError:
+        pretty_json = str(list_content)
+
+    prompt_bullets = bullets_prompts.get(section, "")
+    prompt_text = "\n".join([str(prompt_bullets), pretty_json])
+
+    try:
+        payload = {
+            "model": "qwen/qwen-2.5-72b-instruct",
+            "messages": [
+                {"role": "system", "content": "Ты — профессиональный макроэкономический аналитик Департамента денежно-кредитной политики ЦБ РФ. Твоя задача — подготовить краткие, точные и фактологические буллиты на основе предоставленных новостей, которые будут использованы в еженедельной аналитической записке для руководства банка. Будь предельно объективен, избегай интерпретаций и сосредоточься только на фактах из предоставленных текстов. Твоя работа напрямую влияет на принятие решений по денежно-кредитной политике."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "temperature": 0.1,
+        }
+
+
+        # payload = {
+        #     "model": "sonar-pro",
+        #     "messages": [
+        #         {"role": "system", "content": "Отвечай лаконично и информативно."},
+        #         {"role": "user", "content": prompt_text}
+        #     ],
+        #     "temperature": 0.7,
+        # }
+
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"Модель не вернула ответ для {section}.")
+            return
+
+        assistant_text = choices[0]["message"]["content"]
+
+        file_name = f"report_{section}.txt"
+        save_to_drive(file_name, assistant_text, my_folder=folder["8 news_final"], file_format="txt")
+
+         # Сохраняем в локальный файл для архивации
+        local_filename = f"report_{section}.txt"
+        with open(local_filename, "w", encoding="utf-8") as f_local:
+            f_local.write(assistant_text)
+        print(f"Локально сохранено: {local_filename}")
+        
+        print(f"{section}: буллиты успешно записаны.")
+
+    except Exception as e:
+        print(f"Ошибка при вызове модели для {section}: {e}")
+        return
+
+if datetime.today().weekday() == 3: ###################3 - Thu
+    #create_bullets("world")
+    #time.sleep(60)
+    #create_bullets("rus")
+    #time.sleep(60)
+    create_bullets("prices")
+    #telegram_bullets()
+    
