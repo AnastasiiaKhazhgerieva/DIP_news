@@ -148,14 +148,16 @@ MY_FOLDER_ID = folder["5 news_lists"] # 5 new lists
 # with open(API_KEY_FILE, "r", encoding="utf-8") as f:
 #     API_KEY = f.read().strip()
 
-API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
+#API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
+API_KEY = os.environ.get("OPENROUTER_API_KEY") 
 
 if not API_KEY:
     raise ValueError("Нет API-ключа (проверьте файл или переменную окружения)!")
 
 # Задаем эндпоинт и исходные сообщения
 #url = "https://api.perplexity.ai/chat/completions"
-url = "https://api.deepseek.com/v1/chat/completions"
+#url = "https://api.deepseek.com/v1/chat/completions"
+url = "https://openrouter.ai/api/v1/chat/completions"
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
