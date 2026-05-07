@@ -374,6 +374,36 @@ def get_proxy_page_soup(url, headers=HEADERS, proxies=proxies, timeout=30):
     resp.raise_for_status()
     return BeautifulSoup(resp.text, "html.parser")
 
+# Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
+section_to_files = {
+    "world": [
+        "kom_world.json",
+        "kom_econ.json",
+        "ved.json",
+        "rbc.json",
+        "agro.json",
+        #"rg.json",
+        "ria.json"
+    ],
+    "rus": [
+        "kom_econ.json",
+        "ved.json",
+        "rbc.json",
+        "agro.json",
+        #"rg.json",
+        "ria.json"
+    ],
+    "prices": [
+        "kom_markets.json",
+        "kom_econ.json",
+        "ved.json",
+        "rbc.json",
+        "agro.json",
+        #"rg.json",
+        "ria.json",
+        "autostat.json"
+    ]
+}
 
 ## Scrapers: Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
