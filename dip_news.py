@@ -1104,12 +1104,77 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-if datetime.today().weekday() == 3: ################### 3 - Thu
+#if datetime.today().weekday() == 3: ################### 3 - Thu
     #choose_top_urls("world")
     #time.sleep(60)
     #choose_top_urls("rus")
     #time.sleep(60)
-    choose_top_urls("prices")
+    #choose_top_urls("prices")
 
+def read_top_urls(section, max_chars=3000):
+    def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
+        paragraphs = []
+        for p in soup.find_all('p'):
+            text = p.get_text(" ", strip=True)
+            if len(text) < min_paragraph_len:
+                continue
+            low = text.lower()
+            # Фильтр по рекламе/подпискам
+            if any(word in low for word in ["cookie", "subscribe", "advert", "реклама", "подпишитесь"]):
+                continue
+            paragraphs.append(text)
+            if len(paragraphs) >= max_paragraphs:
+                break
+        combined_text = " ".join(paragraphs)
+        if len(combined_text) > max_chars:
+            combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
+        return combined_text
 
+    # Имя файла с топ ссылками для секции, например "world.json"
+    file_name = f"{section}.json"
+
+    # Находим ID файла в папке с топами
+    file_id = find_file_in_drive(file_name, folder_id=folder["6 news_top"]) # 6 news top
+
+    # Скачиваем содержимое файла — список словарей с title, url и темой
+    json_text = download_text_file(file_id)
+    try:
+        items = json.loads(json_text)
+    except Exception as e:
+        print(f"Ошибка чтения JSON файла {file_name}: {e}")
+        return
+
+    results = []
+    for item in items:
+        url = item.get("url") or item.get("URL")
+        title = item.get("title", "")
+        theme = item.get("theme") or item.get("тема") or "undefined"
+        if not url:
+            continue
+        try:
+            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            soup = BeautifulSoup(resp.text, "html.parser")
+            page_text = extract_main_text(soup, max_chars=max_chars)
+            results.append({
+                "title": title,
+                "url": url,
+                "theme": theme,
+                "text": page_text
+            })
+        except Exception as e:
+            print(f"Ошибка при обработке {url}: {e}")
+
+    # Сохраняем результат в другую папку с текстами
+    save_to_drive(
+        file_name,
+        results,
+        my_folder=folder["7 news_top_texts"] , # 7 news_top_texts
+        file_format="json"
+    )
+    print(f"{section}: сохранено {len(results)} ссылок с текстами.")
+
+if datetime.today().weekday() == 3: ##################3 - Thu
+    #read_top_urls("world")
+    #read_top_urls("rus")
+    read_top_urls("prices")
 
