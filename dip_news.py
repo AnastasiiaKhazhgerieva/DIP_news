@@ -831,26 +831,27 @@ rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabot
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-# fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
-# fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-# fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
-# fetch_ved(dates_ved, "ved.json")
-# fetch_rbc(rubrics_rbc, dates, "rbc.json")
+fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
+fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
+fetch_ved(dates_ved, "ved.json")
+fetch_rbc(rubrics_rbc, dates, "rbc.json")
 
-#try:
-    #fetch_agro(dates, "agro.json")
-#except Exception as e:
+try:
+    fetch_agro(dates, "agro.json")
+except Exception as e:
 
-#    pass
+    pass
+    
 # fetch_rg(rubrics_rg, dates, "rg.json")
-#try:
-#    fetch_rg(rubrics_rg, dates, "rg.json")
-#except Exception as e:
+try:
+    fetch_rg(rubrics_rg, dates, "rg.json")
+except Exception as e:
 
-#    pass
+    pass
 
-#fetch_ria(dates, "ria.json")
-#fetch_autostat(dates, "autostat.json", rubrics_auto)
+fetch_ria(dates, "ria.json")
+fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 
 
@@ -1247,10 +1248,10 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-#create_news_lists("world")
-#time.sleep(60)
-#create_news_lists("rus")
-#time.sleep(60)
+create_news_lists("world")
+time.sleep(60)
+create_news_lists("rus")
+time.sleep(60)
 create_news_lists("prices")
 
 def prioritise(section):
@@ -1348,10 +1349,10 @@ def prioritise(section):
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 
-#prioritise("world")
-#time.sleep(60)
-#prioritise("rus")
-#time.sleep(60)
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
 prioritise("prices")
 
 def design_wo_llm(section):
@@ -1450,16 +1451,14 @@ def design(section):
         return
 
 
-#for section in ["world", "rus", "prices"]:
-#    try:
-#        design_wo_llm(section)
-#    except Exception as e:
-#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-#        design(section)
-#        time.sleep(60)
-#telegram_lists()
-
-design("prices")
+for section in ["world", "rus", "prices"]:
+    try:
+        design_wo_llm(section)
+    except Exception as e:
+        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+        design(section)
+        time.sleep(60)
+telegram_lists()
 
 class NewsItem(BaseModel):
     theme: str
@@ -1585,14 +1584,12 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-#if datetime.today().weekday() == 3: ################### 3 - Thu
-#    choose_top_urls("world")
-#    time.sleep(60)
-#    choose_top_urls("rus")
-#    time.sleep(60)
-#    choose_top_urls("prices")
-
-choose_top_urls("prices")
+if datetime.today().weekday() == 3: ################### 3 - Thu
+    choose_top_urls("world")
+    time.sleep(60)
+    choose_top_urls("rus")
+    time.sleep(60)
+    choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
     def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
@@ -1656,12 +1653,10 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-#if datetime.today().weekday() == 3: ##################3 - Thu
-#    read_top_urls("world")
-#    read_top_urls("rus")
-#    read_top_urls("prices")
-
-read_top_urls("prices")
+if datetime.today().weekday() == 3: ##################3 - Thu
+    read_top_urls("world")
+    read_top_urls("rus")
+    read_top_urls("prices")
 
 def create_bullets(section):
     list_file = f"{section}.json"
@@ -1729,33 +1724,32 @@ def create_bullets(section):
         return
 
 if datetime.today().weekday() == 3: ###################3 - Thu
-    #create_bullets("world")
-    #time.sleep(60)
-    #create_bullets("rus")
-    #time.sleep(60)
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
     create_bullets("prices")
-    #telegram_bullets()
+    telegram_bullets()
     # Собираем primary версию до корректировок, чтобы потом сравнить с итоговой
-    #folder_name = "primary_versions"
-    #os.makedirs(folder_name, exist_ok=True) # Папка появится автоматически
+    folder_name = "primary_versions"
+    os.makedirs(folder_name, exist_ok=True) # Папка появится автоматически
     
-    #today_str = datetime.now().strftime("%Y-%m-%d")
-    #final_file_path = os.path.join(folder_name, f"{today_str}_primary.txt")
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    final_file_path = os.path.join(folder_name, f"{today_str}_primary.txt")
     
-    #print(f"Начинаю создание итогового файла: {final_file_path}")
+    print(f"Начинаю создание итогового файла: {final_file_path}")
 
-    #with open(final_file_path, "w", encoding="utf-8") as final_f:
-    #    for sec in sections:
-    #        source_file = f"report_{sec}.txt"
-    #        if os.path.exists(source_file):
-    #            with open(source_file, "r", encoding="utf-8") as src_f:
-    #                content = src_f.read()
-    #                final_f.write(f"\n\n{'#' * 30}\n")
-    #                final_f.write(f"# РАЗДЕЛ: {sec.upper()} \n")
-    #                final_f.write(f"{'#' * 30}\n\n")
-    #                final_f.write(content)
-    #                print(f"Добавлена секция: {sec}")
-    #        else:
-    #            print(f"❌ Пропускаю {source_file} (не найден)")
-
-    #print(f"Итоговый файл создан: {final_file_path}")
+    with open(final_file_path, "w", encoding="utf-8") as final_f:
+        for sec in sections:
+            source_file = f"report_{sec}.txt"
+            if os.path.exists(source_file):
+                with open(source_file, "r", encoding="utf-8") as src_f:
+                    content = src_f.read()
+                    final_f.write(f"\n\n{'#' * 30}\n")
+                    final_f.write(f"# РАЗДЕЛ: {sec.upper()} \n")
+                    final_f.write(f"{'#' * 30}\n\n")
+                    final_f.write(content)
+                    print(f"Добавлена секция: {sec}")
+            else:
+                print(f"❌ Пропускаю {source_file} (не найден)")
+    print(f"Итоговый файл создан: {final_file_path}")
