@@ -873,6 +873,108 @@ def prioritise(section):
 #time.sleep(60)
 #prioritise("rus")
 #time.sleep(60)
-prioritise("prices")
+#prioritise("prices")
+
+def design_wo_llm(section):
+    file_name_json = f"{section}.json"
+    try:
+        file_id = find_file_in_drive(file_name_json, folder["2 4 new_lists_json"]) # 2 4 new_lists_json
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"Файл {file_name_json} не найден в папке.")
+        return
+    except Exception as e:
+        print(f"Ошибка при загрузке файла {file_name_json}: {e}")
+        return
+    # Парсим входной JSON
+    try:
+        news_items = json.loads(news_list_raw)
+    except json.JSONDecodeError as e:
+        print(f"Ошибка парсинга JSON: {e}")
+        return
+    # Формируем нумерованный список, как в примере, с сохранением day
+    formatted_lines = []
+    for i, item in enumerate(news_items, 1):
+        title = item.get("title", "").strip()
+        url = item.get("url", "").strip()
+        day = item.get("day")  # сохраняем поле day, если есть
+        if not title or not url:
+            continue
+        if day is not None:
+            line = f"{i}.\t{title} (day: {day})\n{url}"
+        else:
+            line = f"{i}.\t{title}\n{url}"
+        formatted_lines.append(line)
+
+    # Склеиваем результаты с переводом строки между ними
+    result_text = "\r\n".join(formatted_lines) + "\r\n" if formatted_lines else ""
+    file_name_txt = f"{section}.txt"
+    save_to_drive(file_name_txt, result_text, folder["5 news_lists"], file_format="txt") # 5 news_lists
+    print(f"✅ design({section}) — успешно сохранён файл с текстом.")
+
+
+def design(section):
+    file_name_json = f"{section}.json"
+    try:
+        file_id = find_file_in_drive(file_name_json, folder["2 4 new_lists_json"])
+        news_list_raw = download_text_file(file_id)
+    except FileNotFoundError:
+        print(f"Файл {file_name_json} не найден в папке.")
+        return
+    except Exception as e:
+        print(f"Ошибка при загрузке файла {file_name_json}: {e}")
+        return
+    raw_parts = [prompt_design, example, news_list_raw]
+    prompt_parts = []
+    for part in raw_parts:
+        if isinstance(part, list):
+            prompt_parts.append("\n".join(part))
+        else:
+            prompt_parts.append(str(part))
+    prompt_text = "\n".join(prompt_parts)
+    try:
+        payload = {
+            "model": "deepseek/deepseek-chat-v3-0324",
+            "messages": [
+                {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "temperature": 0.7
+        }
+    
+    
+    
+        # payload = {
+        #     "model": "sonar-pro",
+        #     "messages": [
+        #         {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
+        #         {"role": "user", "content": prompt_text}
+        #     ],
+        #     "temperature": 0.7,
+        #     "disable_search": True
+        # }
+
+
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        choices = result.get("choices")
+        if not choices or not choices[0].get("message", {}).get("content"):
+            print(f"Модель не вернула ответ для '{file_name_json}'.")
+            return
+        assistant_text = choices[0]["message"]["content"]
+        file_name_txt = f"{section}.txt"
+        save_to_drive(file_name_txt, assistant_text, folder["5 news_lists"], file_format="txt") # 5 news lists 
+        print(f"✅ design({section}) — успешно сохранён файл с текстом.")
+    except Exception as e:
+        print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
+        return
+
+try:
+    design_wo_llm("prices")
+except Exception as e:
+    design("prices")
+
+
 
 
