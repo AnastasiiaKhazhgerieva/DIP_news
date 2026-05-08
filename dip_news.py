@@ -1453,7 +1453,7 @@ for section in ["world", "rus", "prices"]:
         print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
         design(section)
         time.sleep(60)
-telegram_lists()
+#telegram_lists()
 
 
 class NewsItem(BaseModel):
@@ -1580,7 +1580,7 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-if datetime.today().weekday() == 3: ################### 3 - Thu
+if datetime.today().weekday() == 4: ################### 3 - Thu
     choose_top_urls("world")
     time.sleep(60)
     choose_top_urls("rus")
@@ -1649,7 +1649,7 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 3: ##################3 - Thu
+if datetime.today().weekday() == 4: ##################3 - Thu
     read_top_urls("world")
     read_top_urls("rus")
     read_top_urls("prices")
@@ -1720,11 +1720,11 @@ def create_bullets(section):
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-if datetime.today().weekday() == 3: ###################3 - Thu
+if datetime.today().weekday() == 4: ###################3 - Thu
     create_bullets("world")
     time.sleep(60)
     create_bullets("rus")
     time.sleep(60)
     create_bullets("prices")
-    telegram_bullets()
+    #telegram_bullets()
     
