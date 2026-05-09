@@ -915,6 +915,7 @@ except json.JSONDecodeError as e:
 models = ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]
 
 for model_bullets in models:
+    print(f"Starting test for model:{model_bullets}")
     save_to_drive(file_name, initial_data, folder_id, file_format="json")
     
     prioritise("prices", model_bullets)
