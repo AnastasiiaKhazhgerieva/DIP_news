@@ -159,6 +159,11 @@ if not API_KEY:
 #url = "https://api.deepseek.com/v1/chat/completions"
 url = "https://openrouter.ai/api/v1/chat/completions"
 
+## Setting up moodels (to test and compare them)
+
+model_lists = "deepseek/deepseek-chat-v3-0324"
+model_bullets = "qwen/qwen-2.5-72b-instruct"
+
 headers = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json"
@@ -1151,7 +1156,7 @@ def create_news_lists(section):
         # Запрос к API
         try:
             payload = {
-                "model": "deepseek/deepseek-chat-v3-0324",
+                "model": model_lists,
                 "messages": [
                     {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                     {"role": "user", "content": "\n".join(prompt_parts)}
@@ -1274,7 +1279,7 @@ def prioritise(section):
     
     try:
         payload = {
-            "model": "qwen/qwen-2.5-72b-instruct",
+            "model": model_bullets,
             "messages": [
                {"role": "system", "content": "Отвечай строго в формате JSON. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
@@ -1410,7 +1415,7 @@ def design(section):
     prompt_text = "\n".join(prompt_parts)
     try:
         payload = {
-            "model": "deepseek/deepseek-chat-v3-0324",
+            "model": model_lists,
             "messages": [
                 {"role": "system", "content": "Отвечай лаконично и информативно. Никогда не добавляй в списки новостей источники, найденные в интернете - отбирай новости только из приложенного списка."},
                 {"role": "user", "content": prompt_text}
@@ -1494,7 +1499,7 @@ def choose_top_urls(section):
 
     try:
         payload = {
-            "model": "qwen/qwen-2.5-72b-instruct", 
+            "model": model_bullets, 
             "messages": [
                 {
                     "role": "system",
@@ -1676,7 +1681,7 @@ def create_bullets(section):
 
     try:
         payload = {
-            "model": "qwen/qwen-2.5-72b-instruct",
+            "model": model_bullets,
             "messages": [
                 {"role": "system", "content": "Ты — профессиональный макроэкономический аналитик Департамента денежно-кредитной политики ЦБ РФ. Твоя задача — подготовить краткие, точные и фактологические буллиты на основе предоставленных новостей, которые будут использованы в еженедельной аналитической записке для руководства банка. Будь предельно объективен, избегай интерпретаций и сосредоточься только на фактах из предоставленных текстов. Твоя работа напрямую влияет на принятие решений по денежно-кредитной политике."},
                 {"role": "user", "content": prompt_text}
