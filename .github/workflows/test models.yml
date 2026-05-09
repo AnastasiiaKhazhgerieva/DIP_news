@@ -4,7 +4,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  run-dip-news:
+  run-model-choice:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,3 +34,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
           PROXY: ${{ secrets.PROXY}}
         run: python tests/model_choice.py
+
+       - name: Upload reports to artifacts
+        if: always()  # загрузит файлы даже если скрипт упал с ошибкой
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-choice-reports-${{ github.run_id }}
+          path: tests/model_choice/
+          retention-days: 7
