@@ -885,11 +885,10 @@ def create_bullets(section, model_bullets):
         # Сохраняем в локальный файл для архивации
         output_dir = Path("primary_versions")
         output_dir.mkdir(parents=True, exist_ok=True)
-        local_filename = output_dir / f"report_{section}_{model_bullets}.txt"
+        local_filename = output_dir / f"report_{section}_{model_bullets.replace("/","").strip()}.txt"
         
         with open(local_filename, "w", encoding="utf-8") as f_local:
             f_local.write(assistant_text)
-        local_filename = f"report_{section}_model_bullets.txt"
         print(f"Локально сохранено: {local_filename}")
 
     except Exception as e:
@@ -899,7 +898,7 @@ def create_bullets(section, model_bullets):
 ####################################################################################
 # Here begins our test
 
-for model_bullets in ["qwen/qwen-2.5-72b-instruct", "anthropic/claude-3.5-sonnet", "openai/gpt-4o", "deepseek/deepseek-chat (v3)"]:
+for model_bullets in ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]:
     prioritise("prices", model_bullets)
     try:
         design_wo_llm("prices")
