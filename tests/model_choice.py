@@ -883,14 +883,18 @@ def create_bullets(section, model_bullets):
         assistant_text = choices[0]["message"]["content"]
         
         # Сохраняем в локальный файл для архивации
-        output_dir = Path("primary_versions")
+        PROJECT_ROOT = Path(__file__).resolve().parent.parent
+        output_dir = PROJECT_ROOT / "primary_versions"
         output_dir.mkdir(parents=True, exist_ok=True)
-        model_name = model_bullets.replace("/","").strip()
+        
+        #  Заменил "/" на "_" для читаемости имени файла (qwen_qwen-2.5-72b-instruct.txt)
+        model_name = model_bullets.replace("/", "_").strip()
         local_filename = output_dir / f"report_{section}_{model_name}.txt"
         
         with open(local_filename, "w", encoding="utf-8") as f_local:
             f_local.write(assistant_text)
-        print(f"Локально сохранено: {local_filename}")
+            
+        print(f"✅ Сохранено: {local_filename}")
 
     except Exception as e:
         print(f"Ошибка при вызове модели для {section}: {e}")
@@ -899,7 +903,15 @@ def create_bullets(section, model_bullets):
 ####################################################################################
 # Here begins our test
 
+# save initial version of list
+file_name = "prices.json"
+folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
+file_id = find_file_in_drive(file_name, folder_id)
+news_list_raw_initial = download_text_file(file_id)
+
 for model_bullets in ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]:
+    save_to_drive(file_name, news_list_raw_initial, folder_id, file_format="json")
+    
     prioritise("prices", model_bullets)
     try:
         design_wo_llm("prices")
