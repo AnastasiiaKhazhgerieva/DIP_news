@@ -62,7 +62,7 @@ jobs:
         env:
           # Ключ для DeepSeek должен быть в Secrets репозитория
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: python update_style_rules.py
+        run: python tests/update_style_rules.py
 
       - name: Commit updated corrections
         run: |
