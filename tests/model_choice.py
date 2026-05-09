@@ -885,7 +885,8 @@ def create_bullets(section, model_bullets):
         # Сохраняем в локальный файл для архивации
         output_dir = Path("primary_versions")
         output_dir.mkdir(parents=True, exist_ok=True)
-        local_filename = output_dir / f"report_{section}_{model_bullets.replace("/","").strip()}.txt"
+        model_name = model_bullets.replace("/","").strip()
+        local_filename = output_dir / f"report_{section}_{model_name}.txt"
         
         with open(local_filename, "w", encoding="utf-8") as f_local:
             f_local.write(assistant_text)
