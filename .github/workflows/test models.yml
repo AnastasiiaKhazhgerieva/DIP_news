@@ -1,4 +1,4 @@
-name: Test models
+name: Model choice
 
 on:
   workflow_dispatch: {}
@@ -21,7 +21,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
-      - name: Run dip_news.py
+      - name: Run model_choice.py
         env:
           #GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           #PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
@@ -33,4 +33,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN}}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
           PROXY: ${{ secrets.PROXY}}
-        run: python dip_news.py
+        run: python tests/model_choice.py
