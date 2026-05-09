@@ -115,35 +115,56 @@ headers = {
 
 ### TG Schedule bot
 
-def telegram_lists():
-    url = "https://api.telegram.org/bot6245425859:AAEHTh0EX9aE6qPhvHoclFPa3a8IBVRNeSM/sendMessage"
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") 
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") 
+
+if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+    raise RuntimeError("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID. "
+                       "Set them as environment variables or Colab secrets before running.")
+
+def send_telegram_message(text: str,
+                          parse_mode: str = "HTML",
+                          timeout: int = 10,
+                          escape_html: bool = False) -> dict:
+    """
+    Send a message using the Telegram Bot API.
+    Returns the parsed JSON response on success, raises on failure.
+    """
+    if escape_html:
+        text = html.escape(text)
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": "-4265314101",
-        "text": "Новостная записка обновлена. См. отчёты по <a href=\"https://clck.ru/3MTaGo\">ссылке</a>",
-        "parse_mode": "HTML"
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
     }
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
 
     try:
-        response = requests.post(url, data=payload)
-        response.raise_for_status()
-        print("Telegram message sent.")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to send Telegram message: {e}")
+        # use json=payload so requests sends proper JSON (Telegram accepts both form and JSON)
+        resp = requests.post(url, json=payload, timeout=timeout)
+        resp.raise_for_status()  # raises on HTTP 4xx/5xx
+    except requests.RequestException as e:
+        # You could log resp.text here if you keep resp in scope; but be careful not to leak secrets.
+        raise RuntimeError(f"Failed to send Telegram message: {e}") from e
+
+    data = resp.json()
+    if not data.get("ok"):
+        # Telegram sometimes returns 200 OK with {"ok": false, ...}
+        raise RuntimeError(f"Telegram API returned an error: {data}")
+
+    return data
+
+def telegram_lists():
+    link_news = f"https://drive.google.com/drive/folders/{folder['5 news_lists']}"
+    text = f'Новостная записка обновлена. См. отчёты по <a href="{link_news}">ссылке</a>'
+    send_telegram_message(text)
 
 def telegram_bullets():
-    url = "https://api.telegram.org/bot6245425859:AAEHTh0EX9aE6qPhvHoclFPa3a8IBVRNeSM/sendMessage"
-    payload = {
-        "chat_id": "-4265314101",
-        "text": "Готовы буллиты к новостной записке. См. отчёты по <a href=\"https://clck.ru/3MTbwx\">ссылке</a>",
-        "parse_mode": "HTML"
-    }
-
-    try:
-        response = requests.post(url, data=payload)
-        response.raise_for_status()
-        print("Telegram message sent.")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to send Telegram message: {e}")
+    link_bullets = f"https://drive.google.com/drive/folders/{folder['8 news_final']}"
+    text = f'Готовы буллиты к новостной записке. См. отчёты по <a href="{link_bullets}">ссылке</a>'
+    send_telegram_message(text)
 
 ### Functions for google drive
 
