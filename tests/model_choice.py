@@ -526,12 +526,13 @@ def extract_json(text: str):
 
 def prioritise(section, model_bullets):
     file_name = f"{section}.json"
+    file_name_initial = f"{section}_initial.json"
     folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
     temp_folder_id = folder["3 news_lists_json_grade"] # 3 grade
     combined_items = []
     # Загружаем файл с новостями
     try:
-        file_id = find_file_in_drive(file_name, folder_id)
+        file_id = find_file_in_drive(file_name_initial, folder_id)
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
