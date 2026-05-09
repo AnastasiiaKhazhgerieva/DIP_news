@@ -1,4 +1,4 @@
-name: Scheduled DIP News
+name: Test models
 
 on:
   workflow_dispatch: {}
