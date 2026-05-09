@@ -35,10 +35,10 @@ jobs:
           PROXY: ${{ secrets.PROXY}}
         run: python tests/model_choice.py
 
-       - name: Upload reports to artifacts
-        if: always()  # загрузит файлы даже если скрипт упал с ошибкой
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-choice-reports-${{ github.run_id }}
-          path: tests/model_choice/
-          retention-days: 7
+      - name: Upload reports to artifacts
+       if: always()  # загрузит файлы даже если скрипт упал с ошибкой
+       uses: actions/upload-artifact@v4
+       with:
+         name: model-choice-reports-${{ github.run_id }}
+         path: tests/model_choice/
+         retention-days: 7
