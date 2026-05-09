@@ -883,11 +883,9 @@ def create_bullets(section, model_bullets):
         assistant_text = choices[0]["message"]["content"]
         
         # Сохраняем в локальный файл для архивации
-        PROJECT_ROOT = Path(__file__).resolve().parent.parent
-        output_dir = PROJECT_ROOT / "primary_versions"
+        output_dir = Path(__file__).resolve().parent / "model_choice"
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        #  Заменил "/" на "_" для читаемости имени файла (qwen_qwen-2.5-72b-instruct.txt)
         model_name = model_bullets.replace("/", "_").strip()
         local_filename = output_dir / f"report_{section}_{model_name}.txt"
         
@@ -907,10 +905,15 @@ def create_bullets(section, model_bullets):
 file_name = "prices.json"
 folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
 file_id = find_file_in_drive(file_name, folder_id)
-news_list_raw_initial = download_text_file(file_id)
+try:
+    initial_data = json.loads(news_list_raw_initial)
+except json.JSONDecodeError as e:
+    raise ValueError(f"Файл {file_name} не является валидным JSON: {e}")
 
-for model_bullets in ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]:
-    save_to_drive(file_name, news_list_raw_initial, folder_id, file_format="json")
+models = ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]
+
+for model_bullets in models:
+    save_to_drive(file_name, initial_data, folder_id, file_format="json")
     
     prioritise("prices", model_bullets)
     try:
