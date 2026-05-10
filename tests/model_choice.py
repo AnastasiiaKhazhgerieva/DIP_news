@@ -532,7 +532,7 @@ def prioritise(section, model_bullets):
     combined_items = []
     # Загружаем файл с новостями
     try:
-        file_id = find_file_in_drive(file_name, folder_id)
+        file_id = find_file_in_drive(file_name_initial, folder_id)
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
@@ -913,7 +913,7 @@ def create_bullets(section, model_bullets):
 #   raise ValueError(f"Файл {file_name} не является валидным JSON: {e}")
 
 # models = ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]
-models = ["qwen/qwen3.5-35b-a3b"]
+models = ["anthropic/claude-sonnet-4.6"]
 
 for model_bullets in models:
     print(f"Starting test for model:{model_bullets}")
