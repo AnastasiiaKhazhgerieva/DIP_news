@@ -1472,6 +1472,9 @@ def choose_top_urls(section):
     folder_id = folder["2 4 new_lists_json"] # 2 4 
     try:
         file_id = find_file_in_drive(file_name, folder_id)
+        if file_id is None:  #
+            print(f"❌ Файл {file_name} не найден в папке {folder_id} (file_id = None).")
+            return
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
