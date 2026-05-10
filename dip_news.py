@@ -162,7 +162,7 @@ url = "https://openrouter.ai/api/v1/chat/completions"
 ## Setting up moodels (to test and compare them)
 
 model_lists = "deepseek/deepseek-chat-v3-0324"
-model_bullets = "anthropic/claude-sonnet-4.6"
+model_bullets = "qwen/qwen-2.5-72b-instruct"
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
@@ -835,27 +835,27 @@ rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabot
 rubrics_auto = [21, 8, 13, 70, 71]
 
 # Fetching
-#fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
-#fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-#fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
-#fetch_ved(dates_ved, "ved.json")
-#fetch_rbc(rubrics_rbc, dates, "rbc.json")
+fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
+fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
+fetch_ved(dates_ved, "ved.json")
+fetch_rbc(rubrics_rbc, dates, "rbc.json")
 
-#try:
-#    fetch_agro(dates, "agro.json")
-#except Exception as e:
+try:
+    fetch_agro(dates, "agro.json")
+except Exception as e:
 
-#    pass
+    pass
     
 # fetch_rg(rubrics_rg, dates, "rg.json")
-#try:
-#    fetch_rg(rubrics_rg, dates, "rg.json")
-#except Exception as e:
+try:
+    fetch_rg(rubrics_rg, dates, "rg.json")
+except Exception as e:
 
-#    pass
+    pass
 
-#fetch_ria(dates, "ria.json")
-#fetch_autostat(dates, "autostat.json", rubrics_auto)
+fetch_ria(dates, "ria.json")
+fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -1248,11 +1248,11 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-#create_news_lists("world")
-#time.sleep(60)
-#create_news_lists("rus")
-#time.sleep(60)
-#create_news_lists("prices")
+create_news_lists("world")
+time.sleep(60)
+create_news_lists("rus")
+time.sleep(60)
+create_news_lists("prices")
 
 def prioritise(section):
     file_name = f"{section}.json"
@@ -1350,11 +1350,11 @@ def prioritise(section):
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 
-#prioritise("world")
-#time.sleep(60)
-#prioritise("rus")
-#time.sleep(60)
-#prioritise("prices")
+prioritise("world")
+time.sleep(60)
+prioritise("rus")
+time.sleep(60)
+prioritise("prices")
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
@@ -1451,15 +1451,14 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-#for section in ["world", "rus", "prices"]:
-#for section in ["prices"]:
-#    try:
-#        design_wo_llm(section)
-#    except Exception as e:
-#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-#        design(section)
-#        time.sleep(60)
-#telegram_lists()
+for section in ["world", "rus", "prices"]:
+    try:
+        design_wo_llm(section)
+    except Exception as e:
+        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+        design(section)
+        time.sleep(60)
+telegram_lists()
 
 
 class NewsItem(BaseModel):
@@ -1472,9 +1471,6 @@ def choose_top_urls(section):
     folder_id = folder["2 4 new_lists_json"] # 2 4 
     try:
         file_id = find_file_in_drive(file_name, folder_id)
-        if not file_id or not isinstance(file_id, str) or not file_id.strip():
-            print(f"❌ file_id невалиден: {repr(file_id)}. Проверьте find_file_in_drive().")
-            return
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
@@ -1589,11 +1585,11 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-if datetime.today().weekday() == 6: ################### 3 - Thu
-    #choose_top_urls("world")
-    #time.sleep(60)
-    #choose_top_urls("rus")
-    #time.sleep(60)
+if datetime.today().weekday() == 3: ################### 3 - Thu
+    choose_top_urls("world")
+    time.sleep(60)
+    choose_top_urls("rus")
+    time.sleep(60)
     choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
@@ -1658,9 +1654,9 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 6: ##################3 - Thu
-    #read_top_urls("world")
-    #read_top_urls("rus")
+if datetime.today().weekday() == 3: ##################3 - Thu
+    read_top_urls("world")
+    read_top_urls("rus")
     read_top_urls("prices")
 
 
@@ -1717,23 +1713,23 @@ def create_bullets(section):
         file_name = f"report_{section}.txt"
         save_to_drive(file_name, assistant_text, my_folder=folder["8 news_final"], file_format="txt")
 
-        # Сохраняем в локальный файл для архивации
-        #local_filename = f"report_{section}.txt"
-        #with open(local_filename, "w", encoding="utf-8") as f_local:
-        #    f_local.write(assistant_text)
-        #print(f"Локально сохранено: {local_filename}")
+         # Сохраняем в локальный файл для архивации
+        local_filename = f"report_{section}.txt"
+        with open(local_filename, "w", encoding="utf-8") as f_local:
+            f_local.write(assistant_text)
+        print(f"Локально сохранено: {local_filename}")
         
-        #print(f"{section}: буллиты успешно записаны.")
+        print(f"{section}: буллиты успешно записаны.")
 
     except Exception as e:
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-if datetime.today().weekday() == 6: ###################3 - Thu
-    #create_bullets("world")
-    #time.sleep(60)
-    #create_bullets("rus")
-    #time.sleep(60)
+if datetime.today().weekday() == 3: ###################3 - Thu
+    create_bullets("world")
+    time.sleep(60)
+    create_bullets("rus")
+    time.sleep(60)
     create_bullets("prices")
-    #telegram_bullets()
+    telegram_bullets()
     
