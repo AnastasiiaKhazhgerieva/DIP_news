@@ -903,21 +903,21 @@ def create_bullets(section, model_bullets):
 # Here begins our test
 
 # save initial version of list
-file_name = "prices.json"
-folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
-file_id = find_file_in_drive(file_name, folder_id)
-news_list_raw_initial = download_text_file(file_id)
-try:
-    initial_data = json.loads(news_list_raw_initial)
-except json.JSONDecodeError as e:
-    raise ValueError(f"Файл {file_name} не является валидным JSON: {e}")
+#file_name = "prices.json"
+#folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
+3file_id = find_file_in_drive(file_name, folder_id)
+#news_list_raw_initial = download_text_file(file_id)
+#try:
+#    initial_data = json.loads(news_list_raw_initial)
+#except json.JSONDecodeError as e:
+#   raise ValueError(f"Файл {file_name} не является валидным JSON: {e}")
 
 # models = ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]
 models = ["qwen/qwen3.5-35b-a3b"]
 
 for model_bullets in models:
     print(f"Starting test for model:{model_bullets}")
-    save_to_drive(file_name, initial_data, folder_id, file_format="json")
+    #save_to_drive(file_name, initial_data, folder_id, file_format="json")
     
     prioritise("prices", model_bullets)
     try:
