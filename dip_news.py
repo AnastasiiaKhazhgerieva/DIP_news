@@ -1354,7 +1354,7 @@ def prioritise(section):
 #time.sleep(60)
 #prioritise("rus")
 #time.sleep(60)
-prioritise("prices")
+#prioritise("prices")
 
 def design_wo_llm(section):
     file_name_json = f"{section}.json"
@@ -1452,13 +1452,13 @@ def design(section):
         return
 
 #for section in ["world", "rus", "prices"]:
-for section in ["prices"]:
-    try:
-        design_wo_llm(section)
-    except Exception as e:
-        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-        design(section)
-        time.sleep(60)
+#for section in ["prices"]:
+#    try:
+#        design_wo_llm(section)
+#    except Exception as e:
+#        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+#        design(section)
+#        time.sleep(60)
 #telegram_lists()
 
 
@@ -1714,13 +1714,13 @@ def create_bullets(section):
         file_name = f"report_{section}.txt"
         save_to_drive(file_name, assistant_text, my_folder=folder["8 news_final"], file_format="txt")
 
-         # Сохраняем в локальный файл для архивации
-        local_filename = f"report_{section}.txt"
-        with open(local_filename, "w", encoding="utf-8") as f_local:
-            f_local.write(assistant_text)
-        print(f"Локально сохранено: {local_filename}")
+        # Сохраняем в локальный файл для архивации
+        #local_filename = f"report_{section}.txt"
+        #with open(local_filename, "w", encoding="utf-8") as f_local:
+        #    f_local.write(assistant_text)
+        #print(f"Локально сохранено: {local_filename}")
         
-        print(f"{section}: буллиты успешно записаны.")
+        #print(f"{section}: буллиты успешно записаны.")
 
     except Exception as e:
         print(f"Ошибка при вызове модели для {section}: {e}")
