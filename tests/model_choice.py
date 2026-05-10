@@ -912,7 +912,8 @@ try:
 except json.JSONDecodeError as e:
     raise ValueError(f"Файл {file_name} не является валидным JSON: {e}")
 
-models = ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]
+# models = ["qwen/qwen-2.5-72b-instruct", "qwen/qwen3.5-35b-a3b", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "deepseek/deepseek-v4-pro"]
+models = ["qwen/qwen-2.5-72b-instruct"]
 
 for model_bullets in models:
     print(f"Starting test for model:{model_bullets}")
