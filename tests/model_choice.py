@@ -905,7 +905,7 @@ def create_bullets(section, model_bullets):
 # save initial version of list
 #file_name = "prices.json"
 #folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
-3file_id = find_file_in_drive(file_name, folder_id)
+#file_id = find_file_in_drive(file_name, folder_id)
 #news_list_raw_initial = download_text_file(file_id)
 #try:
 #    initial_data = json.loads(news_list_raw_initial)
