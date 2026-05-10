@@ -532,7 +532,7 @@ def prioritise(section, model_bullets):
     combined_items = []
     # Загружаем файл с новостями
     try:
-        file_id = find_file_in_drive(file_name_initial, folder_id)
+        file_id = find_file_in_drive(file_name, folder_id)
         news_list_raw = download_text_file(file_id)
     except FileNotFoundError:
         print(f"❌ Файл {file_name} не найден в папке {folder_id}.")
