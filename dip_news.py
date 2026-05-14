@@ -162,6 +162,7 @@ url = "https://openrouter.ai/api/v1/chat/completions"
 ## Setting up moodels (to test and compare them)
 
 model_lists = "deepseek/deepseek-chat-v3-0324"
+model_bullets = "deepseek/deepseek-chat-v3-0324"
 model_bullets = "qwen/qwen-2.5-72b-instruct"
 
 headers = {
@@ -1458,7 +1459,7 @@ for section in ["world", "rus", "prices"]:
         print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
         design(section)
         time.sleep(60)
-telegram_lists()
+#telegram_lists()
 
 
 class NewsItem(BaseModel):
@@ -1731,5 +1732,5 @@ if datetime.today().weekday() == 3: ###################3 - Thu
     create_bullets("rus")
     time.sleep(60)
     create_bullets("prices")
-    telegram_bullets()
+    #telegram_bullets()
     
