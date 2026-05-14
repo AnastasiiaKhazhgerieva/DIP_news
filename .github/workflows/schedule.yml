@@ -1,43 +1,43 @@
-name: Scheduled DIP News
+# name: Scheduled DIP News
 
-on:
-  schedule:
-    # Среда в 16:00 MSK → 13:00 UTC
-    - cron: '0 13 * * Wed'
-    # Пятница в 10:30 MSK → 7:30 UTC
-    - cron: '30 7 * * Fri'
-    # В остальные дни (понедельник, вторник, четверг, суббота, воскресенье) в 14:00 MSK → 11:00 UTC
-    - cron: '0 11 * * Mon,Tue,Thu,Sat,Sun'
-  workflow_dispatch: {}
+# on:
+#   schedule:
+#     # Среда в 16:00 MSK → 13:00 UTC
+#     - cron: '0 13 * * Wed'
+#     # Пятница в 10:30 MSK → 7:30 UTC
+#     - cron: '30 7 * * Fri'
+#     # В остальные дни (понедельник, вторник, четверг, суббота, воскресенье) в 14:00 MSK → 11:00 UTC
+#     - cron: '0 11 * * Mon,Tue,Thu,Sat,Sun'
+#   workflow_dispatch: {}
 
-jobs:
-  run-dip-news:
-    runs-on: ubuntu-latest
+# jobs:
+#   run-dip-news:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v6
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
+#       - name: Set up Python 3.10
+#         uses: actions/setup-python@v6
+#         with:
+#           python-version: '3.10'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip setuptools wheel
+#           pip install -r requirements.txt
 
-      - name: Run dip_news.py
-        env:
-          #GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          #PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
-          GOOGLE_TOKEN_B64: ${{ secrets.GOOGLE_TOKEN_B64 }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          #DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          FOLDERS_SANDBOX: ${{ secrets.FOLDERS_SANDBOX}}
-          FOLDERS_MAIN: ${{ secrets.FOLDERS_MAIN}}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN}}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
-          PROXY: ${{ secrets.PROXY}}
-        run: python dip_news.py
+#       - name: Run dip_news.py
+#         env:
+#           #GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+#           #PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+#           GOOGLE_TOKEN_B64: ${{ secrets.GOOGLE_TOKEN_B64 }}
+#           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+#           #DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+#           FOLDERS_SANDBOX: ${{ secrets.FOLDERS_SANDBOX}}
+#           FOLDERS_MAIN: ${{ secrets.FOLDERS_MAIN}}
+#           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN}}
+#           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
+#           PROXY: ${{ secrets.PROXY}}
+#         run: python dip_news.py
