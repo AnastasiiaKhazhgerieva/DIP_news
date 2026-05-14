@@ -163,7 +163,7 @@ url = "https://openrouter.ai/api/v1/chat/completions"
 
 model_lists = "deepseek/deepseek-chat-v3-0324"
 model_bullets = "deepseek/deepseek-chat-v3-0324"
-model_bullets = "qwen/qwen-2.5-72b-instruct"
+#model_bullets = "qwen/qwen-2.5-72b-instruct"
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
