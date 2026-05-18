@@ -157,9 +157,11 @@ url = "https://api.deepseek.com/v1/chat/completions"
 
 # Setting up models (to test and compare them)
 
-model_lists = "deepseek/deepseek-chat-v3-0324"
-model_bullets = "deepseek/deepseek-chat-v3-0324"
-#model_bullets = "qwen/qwen-2.5-72b-instruct"
+model_lists = "deepseek-chat" # direct deepseek
+model_bullets = "deepseek-chat" # direct deepseek
+#model_lists = "deepseek/deepseek-chat-v3-0324" # openrouter
+#model_bullets = "deepseek/deepseek-chat-v3-0324" #openrouter
+# model_bullets = "qwen/qwen-2.5-72b-instruct" #openrouter
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
