@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-"""dip_news.ipynb 
-is the same file, but more convenient for running  locally.
-    
 """
-
+read GUIDE.md to understand what’s going on here.    
+"""
 # packages
 
 import requests
@@ -16,6 +14,7 @@ import pandas as pd
 import io
 import base64
 import re
+import argparse
 from pathlib import Path
 try: # google colab не запускается, когда раним через workflow, он там есть по умолчанию, поэтому имени в PyPL такого нет
     from google.colab import userdata, drive
@@ -35,9 +34,68 @@ from typing import List
 from pydantic import BaseModel
 
 
+# --- Stage selector (run the pipeline step by step) -------------------------
+# Default behaviour (no args / no env var) = run every stage, exactly like before.
+# CLI:  python dip_news.py --stage scrape
+#       python dip_news.py --stage lists prioritise
+#       python dip_news.py --stage bullets --force-thursday
+# Env:  STAGE=scrape python dip_news.py
+#       STAGE="lists,prioritise" python dip_news.py
+_STAGE_ORDER = ["scrape", "lists", "prioritise", "design", "top", "read_top", "bullets"]
+_VALID_STAGES = set(_STAGE_ORDER) | {"all"}
+
+_parser = argparse.ArgumentParser(
+    description="dip_news pipeline. By default runs every stage in order.",
+    add_help=True,
+)
+_parser.add_argument(
+    "--stage", "--stages",
+    dest="stages",
+    nargs="+",
+    default=None,
+    help="One or more of: " + ", ".join(_STAGE_ORDER) + ", all. "
+         "Default: read STAGE env var, otherwise run 'all'.",
+)
+_parser.add_argument(
+    "--force-thursday",
+    action="store_true",
+    help="Run the Thursday-only stages (top/read_top/bullets) regardless of weekday.",
+)
+_args, _ = _parser.parse_known_args()
+
+if _args.stages is None:
+    _stages_raw = os.environ.get("STAGE") or os.environ.get("STAGES") or "all"
+    _args.stages = [s.strip() for s in _stages_raw.replace(",", " ").split() if s.strip()]
+
+_requested = {s.lower() for s in _args.stages}
+_unknown = _requested - _VALID_STAGES
+if _unknown:
+    raise SystemExit(
+        f"Unknown stage(s): {sorted(_unknown)}. Valid: {sorted(_VALID_STAGES)}."
+    )
+RUN_ALL = "all" in _requested
+
+def should_run(name: str) -> bool:
+    """Return True iff this stage should execute in the current invocation."""
+    if not (RUN_ALL or name in _requested):
+        return False
+    # Thursday-only stages: in default "run all" mode they still respect the
+    # weekday gate; when a stage is requested explicitly we treat that as the
+    # override and run it anyway.
+    if name in ("top", "read_top", "bullets") and RUN_ALL and not _args.force_thursday:
+        return datetime.today().weekday() == 3
+    return True
+
+print(
+    "Stages enabled this run:",
+    [s for s in _STAGE_ORDER if should_run(s)] or "(none)"
+)
+# ---------------------------------------------------------------------------
+
+
 # Sandbox mode
 # USE_SANDBOX = os.environ.get("USE_SANDBOX", "True").lower() == "true"
-USE_SANDBOX = False  # Set to True to use sandbox folders
+USE_SANDBOX = True  # Set to True to use sandbox folders
 FOLDERS_JSON = os.environ.get("FOLDERS_SANDBOX") if USE_SANDBOX else os.environ.get("FOLDERS_MAIN")
 print("Folders:", "SANDBOX (FOLDERS_SANDBOX)" if USE_SANDBOX else "MAIN (FOLDERS_MAIN)")
 
@@ -162,6 +220,7 @@ model_bullets = "deepseek-chat" # direct deepseek
 #model_lists = "deepseek/deepseek-chat-v3-0324" # openrouter
 #model_bullets = "deepseek/deepseek-chat-v3-0324" #openrouter
 # model_bullets = "qwen/qwen-2.5-72b-instruct" #openrouter
+
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
@@ -858,27 +917,26 @@ rubrics_auto = [21, 8, 13, 70, 71]
 #file creation may not work, there must be an empty blank file
 
 # Fetching
-fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
-fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
-fetch_ved(dates_ved, "ved.json")
-fetch_rbc(rubrics_rbc, dates, "rbc.json")
+if should_run("scrape"):
+    fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
+    fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+    fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
+    fetch_ved(dates_ved, "ved.json")
+    fetch_rbc(rubrics_rbc, dates, "rbc.json")
 
-try:
-    fetch_agro(dates, "agro.json")
-except Exception as e:
+    try:
+        fetch_agro(dates, "agro.json")
+    except Exception as e:
+        pass
 
-    pass
-    
-# fetch_rg(rubrics_rg, dates, "rg.json")
-try:
-    fetch_rg(rubrics_rg, dates, "rg.json")
-except Exception as e:
+    # fetch_rg(rubrics_rg, dates, "rg.json")
+    try:
+        fetch_rg(rubrics_rg, dates, "rg.json")
+    except Exception as e:
+        pass
 
-    pass
-
-fetch_ria(dates, "ria.json")
-fetch_autostat(dates, "autostat.json", rubrics_auto)
+    fetch_ria(dates, "ria.json")
+    fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -1368,11 +1426,12 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
+if should_run("lists"):
+    create_news_lists("world")
+    time.sleep(60)
+    create_news_lists("rus")
+    time.sleep(60)
+    create_news_lists("prices")
 
 def prioritise(section):
     """Re-rank the section news list with an LLM and keep the top 40 items.
@@ -1419,7 +1478,7 @@ def prioritise(section):
     # Готовим prompt
     prompt_prioritise = prioritise_prompts.get(section, "")
     prompt_text = "\n".join([str(prompt_prioritise), news_list_raw])
-    print(prompt_text[:3000])
+    #print(prompt_text[:3000])
     
     try:
         payload = {
@@ -1502,11 +1561,12 @@ def prioritise(section):
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 
-prioritise("world")
-time.sleep(60)
-prioritise("rus")
-time.sleep(60)
-prioritise("prices")
+if should_run("prioritise"):
+    prioritise("world")
+    time.sleep(60)
+    prioritise("rus")
+    time.sleep(60)
+    prioritise("prices")
 
 def design_wo_llm(section):
     """Render the section news list as a plain numbered text file (no LLM).
@@ -1555,8 +1615,8 @@ def design_wo_llm(section):
             continue
         if pub:
             line = f"{i}.\t{title} (published: {pub})\n{url}"
-        elif day is not None:
-            line = f"{i}.\t{title} (day: {day})\n{url}"
+        #elif day is not None:
+        #    line = f"{i}.\t{title} (day: {day})\n{url}"
         else:
             line = f"{i}.\t{title}\n{url}"
         formatted_lines.append(line)
@@ -1642,14 +1702,15 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-for section in ["world", "rus", "prices"]:
-    try:
-        design_wo_llm(section)
-    except Exception as e:
-        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-        design(section)
-        time.sleep(60)
-telegram_lists()
+if should_run("design"):
+    for section in ["world", "rus", "prices"]:
+        try:
+            design_wo_llm(section)
+        except Exception as e:
+            print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+            design(section)
+            time.sleep(60)
+    telegram_lists()
 
 
 class NewsItem(BaseModel):
@@ -1803,7 +1864,7 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-if datetime.today().weekday() == 3: ################### 3 - Thu
+if should_run("top"):
     choose_top_urls("world")
     time.sleep(60)
     choose_top_urls("rus")
@@ -1908,7 +1969,7 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 3: ##################3 - Thu
+if should_run("read_top"):
     read_top_urls("world")
     read_top_urls("rus")
     read_top_urls("prices")
@@ -1994,10 +2055,11 @@ def create_bullets(section):
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-if datetime.today().weekday() == 3: ###################3 - Thu
+if should_run("bullets"):
     create_bullets("world")
     time.sleep(60)
     create_bullets("rus")
     time.sleep(60)
     create_bullets("prices")
-    telegram_bullets()  
+    telegram_bullets()
+    
