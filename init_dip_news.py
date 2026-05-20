@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-a copy for experiments
+"""dip_news.ipynb 
+is the same file, but more convenient for running  locally.
     
 """
-
 # packages
 
 import requests
@@ -16,6 +15,7 @@ import pandas as pd
 import io
 import base64
 import re
+import argparse
 from pathlib import Path
 try: # google colab не запускается, когда раним через workflow, он там есть по умолчанию, поэтому имени в PyPL такого нет
     from google.colab import userdata, drive
@@ -35,15 +35,73 @@ from typing import List
 from pydantic import BaseModel
 
 
+# --- Stage selector (run the pipeline step by step) -------------------------
+# Default behaviour (no args / no env var) = run every stage, exactly like before.
+# CLI:  python dip_news.py --stage scrape
+#       python dip_news.py --stage lists prioritise
+#       python dip_news.py --stage bullets --force-thursday
+# Env:  STAGE=scrape python dip_news.py
+#       STAGE="lists,prioritise" python dip_news.py
+_STAGE_ORDER = ["scrape", "lists", "prioritise", "design", "top", "read_top", "bullets"]
+_VALID_STAGES = set(_STAGE_ORDER) | {"all"}
+
+_parser = argparse.ArgumentParser(
+    description="dip_news pipeline. By default runs every stage in order.",
+    add_help=True,
+)
+_parser.add_argument(
+    "--stage", "--stages",
+    dest="stages",
+    nargs="+",
+    default=None,
+    help="One or more of: " + ", ".join(_STAGE_ORDER) + ", all. "
+         "Default: read STAGE env var, otherwise run 'all'.",
+)
+_parser.add_argument(
+    "--force-thursday",
+    action="store_true",
+    help="Run the Thursday-only stages (top/read_top/bullets) regardless of weekday.",
+)
+_args, _ = _parser.parse_known_args()
+
+if _args.stages is None:
+    _stages_raw = os.environ.get("STAGE") or os.environ.get("STAGES") or "all"
+    _args.stages = [s.strip() for s in _stages_raw.replace(",", " ").split() if s.strip()]
+
+_requested = {s.lower() for s in _args.stages}
+_unknown = _requested - _VALID_STAGES
+if _unknown:
+    raise SystemExit(
+        f"Unknown stage(s): {sorted(_unknown)}. Valid: {sorted(_VALID_STAGES)}."
+    )
+RUN_ALL = "all" in _requested
+
+def should_run(name: str) -> bool:
+    """Return True iff this stage should execute in the current invocation."""
+    if not (RUN_ALL or name in _requested):
+        return False
+    # Thursday-only stages: in default "run all" mode they still respect the
+    # weekday gate; when a stage is requested explicitly we treat that as the
+    # override and run it anyway.
+    if name in ("top", "read_top", "bullets") and RUN_ALL and not _args.force_thursday:
+        return datetime.today().weekday() == 3
+    return True
+
+print(
+    "Stages enabled this run:",
+    [s for s in _STAGE_ORDER if should_run(s)] or "(none)"
+)
+# ---------------------------------------------------------------------------
+
+
 # Sandbox mode
 # USE_SANDBOX = os.environ.get("USE_SANDBOX", "True").lower() == "true"
 USE_SANDBOX = True  # Set to True to use sandbox folders
 FOLDERS_JSON = os.environ.get("FOLDERS_SANDBOX") if USE_SANDBOX else os.environ.get("FOLDERS_MAIN")
+print("Folders:", "SANDBOX (FOLDERS_SANDBOX)" if USE_SANDBOX else "MAIN (FOLDERS_MAIN)")
 
 
 # Folders configuration - load from environment variable as JSON string
-#FOLDERS_JSON = os.environ.get("FOLDERS_SANDBOX")
-print(FOLDERS_JSON)
 if not FOLDERS_JSON:
     raise ValueError("FOLDERS_JSON environment variable is required!")
 try:
@@ -53,8 +111,7 @@ except json.JSONDecodeError as e:
 
 if not folder:
     raise ValueError("FOLDERS_JSON is empty!")
-print(folder)
-print(folder['8 news_final'])
+
 
 
 # Auxilliary
@@ -87,6 +144,9 @@ proxies = {'https':
         PROXY
         }
 
+if not PROXY:
+    raise ValueError("There is no proxy (check the file or environment variable)!")
+
 
 # Set drive access https://console.cloud.google.com
 # 1. Create
@@ -108,11 +168,11 @@ proxies = {'https':
 
 # credentials = service_account.Credentials.from_service_account_file(
 #         SERVICE_ACCOUNT_FILE, scopes=SCOPES)"
-
+# After creating the key, give the service account the rights to the folder in Drive!
 
 encoded_token = os.environ.get("GOOGLE_TOKEN_B64")
 if not encoded_token:
-    raise RuntimeError("OAuth токен не найден. Убедитесь, что переменная окружения GOOGLE_TOKEN_B64 задана.")
+    raise RuntimeError("The OAuth token was not found. Make sure that the GOOGLE_TOKEN_B64 environment variable is set.")
 
 token_bytes = base64.b64decode(encoded_token)
 token_info = json.loads(token_bytes.decode("utf-8"))
@@ -124,43 +184,44 @@ if creds.expired and creds.refresh_token:
     
 drive_service = build("drive", "v3", credentials=creds)
 
-print("✅ Credentials info:")
-print("  - token:", creds.token[:20] + "...")
-print("  - refresh_token:", bool(creds.refresh_token))
-print("  - client_id:", creds.client_id)
-print("  - quota_project_id:", creds.quota_project_id)
-print("  - valid:", creds.valid)
-print("  - expired:", creds.expired)
-print("  - scopes:", creds.scopes)
-# Кто залогинен?
+#print("✅ Credentials info:")
+#print("  - token:", creds.token[:20] + "...")
+#print("  - refresh_token:", bool(creds.refresh_token))
+#print("  - client_id:", creds.client_id)
+#print("  - quota_project_id:", creds.quota_project_id)
+#print("  - valid:", creds.valid)
+#print("  - expired:", creds.expired)
+#print("  - scopes:", creds.scopes)
+
+# Authorization?
 about = drive_service.about().get(fields="user").execute()
-print("✅ Авторизация от имени:", about["user"]["displayName"], about["user"]["emailAddress"])
+print("✅ Authorization on behalf of:", about["user"]["displayName"], about["user"]["emailAddress"])
 
 
 MY_FOLDER_ID = folder["5 news_lists"] # 5 new lists
 
-#API_KEY = os.environ.get("PERPLEXITY_API_KEY")  # для workflow
-#API_KEY = userdata.get('perplexity_api_key')   # для локального запуска
-# API_KEY_FILE = Path("keys") / "deepseek_api_key.txt"
-# with open(API_KEY_FILE, "r", encoding="utf-8") as f:
-#     API_KEY = f.read().strip()
 
-#API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
-API_KEY = os.environ.get("OPENROUTER_API_KEY") 
+API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
+#API_KEY = os.environ.get("OPENROUTER_API_KEY") 
 
 if not API_KEY:
-    raise ValueError("Нет API-ключа (проверьте файл или переменную окружения)!")
+    raise ValueError("There is no API key (check the file or environment variable)!")
 
-# Задаем эндпоинт и исходные сообщения
+# Setting the endpoint and initial messages
+
 #url = "https://api.perplexity.ai/chat/completions"
-#url = "https://api.deepseek.com/v1/chat/completions"
-url = "https://openrouter.ai/api/v1/chat/completions"
+url = "https://api.deepseek.com/v1/chat/completions"
+#url = "https://openrouter.ai/api/v1/chat/completions"
 
-## Setting up moodels (to test and compare them)
 
-model_lists = "deepseek/deepseek-chat-v3-0324"
-model_bullets = "deepseek/deepseek-chat-v3-0324"
-#model_bullets = "qwen/qwen-2.5-72b-instruct"
+# Setting up models (to test and compare them)
+
+model_lists = "deepseek-chat" # direct deepseek
+model_bullets = "deepseek-chat" # direct deepseek
+#model_lists = "deepseek/deepseek-chat-v3-0324" # openrouter
+#model_bullets = "deepseek/deepseek-chat-v3-0324" #openrouter
+# model_bullets = "qwen/qwen-2.5-72b-instruct" #openrouter
+
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
@@ -236,7 +297,16 @@ def telegram_bullets():
 
 ### Functions for google drive
 
-def find_file_in_drive(file_name: str, folder_id = folder["5 news_lists"]) -> str: # 5 new lists 
+def find_file_in_drive(file_name: str, folder_id=folder["5 news_lists"]) -> str:
+    """Look up a Drive file by exact name inside a folder.
+
+    Args:
+        file_name: Exact file name (e.g. ``world.json``).
+        folder_id: Google Drive folder ID to search in; defaults to ``5 news_lists``.
+
+    Returns:
+        File ID if a matching file exists, otherwise ``None``.
+    """
     try:
         resp = drive_service.files().list(
             q=(
@@ -257,10 +327,16 @@ def find_file_in_drive(file_name: str, folder_id = folder["5 news_lists"]) -> st
 
     return None
 
-    #raise FileNotFoundError(f"File '{file_name}' not found in folder {folder_id}.")
-
 
 def download_text_file(fid: str) -> str:
+    """Download a Drive file by ID and return its contents as UTF-8 text.
+
+    Args:
+        fid: Google Drive file ID (from ``find_file_in_drive`` or similar).
+
+    Returns:
+        File body decoded as a string.
+    """
     request = drive_service.files().get_media(fileId=fid)
     fh = io.BytesIO()
     downloader = MediaIoBaseDownload(fh, request)
@@ -270,13 +346,13 @@ def download_text_file(fid: str) -> str:
     return fh.getvalue().decode("utf-8")
 
 def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str = "json"):
-    """
-    Сохраняет файл на Google Drive. Поддерживаются форматы: 'json' (по умолчанию) и 'txt'.
+    """Save a file to Google Drive. Supported formats: 'json' (default) and 'txt'.
 
-    :param file_name: Имя файла.
-    :param data: Данные для записи (dict или str).
-    :param my_folder: ID папки в Google Drive.
-    :param file_format: Формат файла: 'json' или 'txt'.
+    Args:
+        file_name: File name.
+        data: Data to write (dict or str).
+        my_folder: Folder ID in Google Drive.
+        file_format: File format: 'json' or 'txt'.
     """
     if file_format not in ("json", "txt"):
         raise ValueError("file_format должен быть 'json' или 'txt'")
@@ -289,7 +365,7 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
         content_bytes = json_str.encode("utf-8")
         mime_type = "application/json"
 
-    # Ищем, существует ли уже файл
+    # Check if file already exists
     existing_file_id = None
     try:
         resp = drive_service.files().list(
@@ -309,7 +385,7 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
 
     if existing_file_id:
         try:
-            # Пытаемся обновить
+            # Try to update
             updated = drive_service.files().update(
                 fileId=existing_file_id,
                 media_body=media
@@ -323,13 +399,13 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
                     drive_service.files().delete(fileId=existing_file_id).execute()
                     existing_file_id = None  # перейти к созданию
                 except Exception as del_err:
-                    print(f"Ошибка при удалении файла '{file_name}': {del_err}")
+                    print(f"Error deleting file '{file_name}': {del_err}")
                     raise
             else:
-                print(f"Ошибка при обновлении файла '{file_name}': {e}")
+                print(f"Error updating file '{file_name}': {e}")
                 raise
 
-    # Создание нового файла
+    # Create a new file
     file_metadata = {
         "name": file_name,
         "parents": [my_folder],
@@ -344,7 +420,7 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
         print(f"New file created: '{file_name}', (ID={created['id']}).")
         return created
     except Exception as e:
-        print(f"Ошибка при создании нового файла '{file_name}': {e}")
+        print(f"Error creating new file '{file_name}': {e}")
         raise
 
 
@@ -367,10 +443,10 @@ def get_page_soup(url, headers=HEADERS, timeout=30):
 
 ## Getting web page soup using session to avoid 401
 def get_proxy_page_soup(url, headers=HEADERS, proxies=proxies, timeout=30):
-    # Используем сессию для работы с cookies и заголовками
+    # Use session to work with cookies and headers
     session = requests.Session()
 
-    # Сначала делаем GET на главную страницу, чтобы получить cookie и возможно токены
+    # First, make a GET on the main page to get the cookie and possibly tokens
     resp = session.get(url, headers=headers,
                         proxies=proxies
                         )
@@ -407,7 +483,11 @@ def fetch_kom(rubrics, dates, output_file,
                         link = entry.get("url")
                         if title and link and link not in seen_urls:
                             seen_urls.add(link)
-                            all_items.append({"title": title, "url": link})
+                            all_items.append({
+                                "title": title,
+                                "url": link,
+                                "published_date": dt,
+                            })
             except Exception as e:
                 print(f"[ERROR] {e} when fetching {url}")
 
@@ -431,7 +511,8 @@ def fetch_ved(dates, output_file,
                 title = a.get_text(strip=True)
                 href = a.get("href", "")
                 full_url = href if href.startswith("http") else f"https://www.vedomosti.ru{href}"
-                all_news.append({"title": title, "url": full_url})
+                pub = dt.replace("/", "-") if isinstance(dt, str) else None
+                all_news.append({"title": title, "url": full_url, "published_date": pub})
         except Exception as e:
             all_news.append({"error": str(e)})
 
@@ -525,7 +606,8 @@ def fetch_rbc(rubrics, dates, output_file,
 
             collected.append({
                 "title": title,
-                "url": full_url
+                "url": full_url,
+                "published_date": news_date.isoformat(),
             })
 
     # убираем дубликаты по URL
@@ -608,6 +690,7 @@ def fetch_agro(dates, output_file,
             news_list.append({
                 "title": title,
                 "url": full_url,
+                "published_date": news_date.isoformat(),
             })
 
         return news_list
@@ -661,7 +744,8 @@ def fetch_rg(rubrics, dates, output_file,
 
             all_news.append({
                 "title": title_span.get_text(strip=True),
-                "url": full_url
+                "url": full_url,
+                "published_date": news_date.isoformat(),
             })
 
     unique = []
@@ -711,7 +795,8 @@ def fetch_ria(dates, output_file, base_url_template="https://ria.ru/economy/"):
         if news_date in dates:
             collected.append({
                 "title": title,
-                "url": full_url
+                "url": full_url,
+                "published_date": news_date.isoformat(),
             })
 
     unique = []
@@ -802,7 +887,8 @@ def fetch_autostat(dates, output_file,
             if news_date in dates and full_url not in seen_urls:
                 all_collected.append({
                     "title": title,
-                    "url": full_url
+                    "url": full_url,
+                    "published_date": news_date.isoformat(),
                 })
                 seen_urls.add(full_url)
 
@@ -815,14 +901,11 @@ def fetch_autostat(dates, output_file,
 #print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # Parameters
-days_before = 6
+days_before = 1
 dates = get_last_dates(days_before)
 dates_kom = format_dates(dates, fmt="%Y-%m-%d")
 dates_ved = format_dates(dates, fmt="%Y/%m/%d")
 
-#rubrics_kom_econ = [3, 4, 40]
-#rubrics_kom_world = [3, 5]
-#rubrics_kom_marketss = [41] 
 
 rubrics_kom_econ = [3, 4, 40] # 3 - экономика, 4 - бизнеc,  40 - финансы (темы рубрик? для цен топливо в 4 https://www.kommersant.ru/theme/2913 )
 rubrics_kom_world = [5] # 5 - мир 
@@ -832,28 +915,29 @@ rubrics_rbc = ["economics", "business", "finances"]
 rubrics_rg = ["politekonom", "industria", "business", "finansy", "kazna", "rabota", "pensii", "vnesh", "apk", "tovary", "turizm"]
 rubrics_auto = [21, 8, 13, 70, 71]
 
+#file creation may not work, there must be an empty blank file
+
 # Fetching
-fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
-fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
-fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
-fetch_ved(dates_ved, "ved.json")
-fetch_rbc(rubrics_rbc, dates, "rbc.json")
+if should_run("scrape"):
+    fetch_kom(rubrics_kom_econ, dates_kom, "kom_econ.json")
+    fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
+    fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
+    fetch_ved(dates_ved, "ved.json")
+    fetch_rbc(rubrics_rbc, dates, "rbc.json")
 
-try:
-    fetch_agro(dates, "agro.json")
-except Exception as e:
+    try:
+        fetch_agro(dates, "agro.json")
+    except Exception as e:
+        pass
 
-    pass
-    
-# fetch_rg(rubrics_rg, dates, "rg.json")
-try:
-    fetch_rg(rubrics_rg, dates, "rg.json")
-except Exception as e:
+    # fetch_rg(rubrics_rg, dates, "rg.json")
+    try:
+        fetch_rg(rubrics_rg, dates, "rg.json")
+    except Exception as e:
+        pass
 
-    pass
-
-fetch_ria(dates, "ria.json")
-fetch_autostat(dates, "autostat.json", rubrics_auto)
+    fetch_ria(dates, "ria.json")
+    fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -895,21 +979,21 @@ file_id = find_file_in_drive("lists_world.txt", folder["0_prompts"]) # 0 prompts
 try:
     lists_world = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     lists_world = ""
 
 file_id = find_file_in_drive("lists_rus.txt", folder["0_prompts"])
 try:
     lists_rus = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     lists_rus = ""
 
 file_id = find_file_in_drive("lists_prices.txt", folder["0_prompts"])
 try:
     lists_prices = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     lists_prices = ""
 
 lists_prompts = {
@@ -923,21 +1007,21 @@ file_id = find_file_in_drive("prioritise_world.txt", folder["0_prompts"])
 try:
     prioritise_world = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     prioritise_world = ""
 
 file_id = find_file_in_drive("prioritise_rus.txt", folder["0_prompts"])
 try:
     prioritise_rus = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     prioritise_rus = ""
 
 file_id = find_file_in_drive("prioritise_prices.txt", folder["0_prompts"])
 try:
     prioritise_prices = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     prioritise_prices = ""
 
 prioritise_prompts = {
@@ -954,7 +1038,7 @@ file_id = find_file_in_drive("design.txt", folder["0_prompts"])
 try:
     prompt_design = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     prompt_design = ""
 
 
@@ -963,21 +1047,21 @@ file_id = find_file_in_drive("top_world.txt", folder["0_prompts"])
 try:
     top_world = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     top_world = ""
 
 file_id = find_file_in_drive("top_rus.txt", folder["0_prompts"])
 try:
     top_rus = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     top_rus = ""
 
 file_id = find_file_in_drive("top_prices.txt", folder["0_prompts"])
 try:
     top_prices = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     top_prices = ""
 
 top_prompts = {
@@ -992,21 +1076,21 @@ file_id = find_file_in_drive("bullets_world.txt", folder["0_prompts"])
 try:
     bullets_world = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     bullets_world = ""
 
 file_id = find_file_in_drive("bullets_rus.txt", folder["0_prompts"])
 try:
     bullets_rus = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     bullets_rus = ""
 
 file_id = find_file_in_drive("bullets_prices.txt", folder["0_prompts"])
 try:
     bullets_prices = download_text_file(file_id)
 except Exception as e:
-    print("Ошибка при скачивании файла:", e)
+    print("Error when downloading a file:", e)
     bullets_prices = ""
 
 bullets_prompts = {
@@ -1018,13 +1102,25 @@ bullets_prompts = {
 example = 'Пример верного оформления:\r\n1.\tРосстат зафиксировал стабилизацию выпуска базовых отраслей (day: 3) \r\nhttps://www.kommersant.ru/doc/7329366 \r\n2.\tСтроители просят смягчить правила распоряжения авансами (day: 1)\r\nhttps://www.rbc.ru/newspaper/2024/11/25/673f6abf9a7947de58a24847 \r\n3.\tВ Ульяновске открылся новый завод грузовиков Соллерс (day: 0) \r\nhttps://tass.ru/ekonomika/22497349 \r\n 4.\t Добыча газа за 9 месяцев выросла на 8% г/г в основном за счет Газпрома (day: 3) \r\nhttps://www.interfax.ru/business/994801 \r\n'
 
 def extract_json(text: str):
-    """
-    Извлекает валидный JSON (объект или массив) из строки.
-    Приоритет:
-    1. Кодовые блоки: `````` или ``````
-    2. Самый длинный валидный фрагмент, начинающийся с [ или { и заканчивающийся на ] или }
-    3. Перебор всех возможных подстрок (на случай битого форматирования)
-    Возвращает: dict | list | None
+    """Extract a valid JSON object or array from an arbitrary text string.
+
+    The function tries several strategies, in order of reliability:
+
+    1. Look for a fenced code block (``` ... ```) and parse its content.
+    2. Find the longest balanced ``[...]`` or ``{...}`` fragment that
+       parses as valid JSON.
+    3. If the whole text is a JSON-encoded string, unescape it and try
+       to parse the result.
+    4. Brute-force scan: try every substring that starts with ``[``/``{``
+       and ends with ``]``/``}`` (slow fallback for badly formatted output).
+
+    Args:
+        text: Raw string that may contain JSON mixed with other text
+            (e.g. LLM response with explanations).
+
+    Returns:
+        Parsed Python object (``dict`` or ``list``) on success,
+        ``None`` if no valid JSON fragment could be recovered.
     """
     if not isinstance(text, str):
         return None
@@ -1088,8 +1184,85 @@ def extract_json(text: str):
             except json.JSONDecodeError:
                 continue
     return None
-    
+
+
+def _normalize_url_key(u: str) -> str:
+    """Normalize a URL so it can be used as a dictionary lookup key.
+
+    Trims surrounding whitespace and strips a single trailing slash, so
+    that ``https://site.ru/page`` and ``https://site.ru/page/`` map to the
+    same key.
+
+    Args:
+        u: Raw URL string (or any value).
+
+    Returns:
+        Normalized URL, or an empty string for falsy/non-string input.
+    """
+    if not u or not isinstance(u, str):
+        return ""
+    u = u.strip()
+    if len(u) > 1 and u.endswith("/"):
+        u = u.rstrip("/")
+    return u
+
+
+def _published_date_map_from_feed(news_data) -> dict:
+    """Build a ``{url: published_date}`` map from a raw news feed JSON.
+
+    Used to restore the original publication date of a news item after the
+    LLM has filtered/reformatted the feed (the model may drop the
+    ``published_date`` field).
+
+    Args:
+        news_data: List of news dicts coming straight from a scraper file
+            (each dict typically has ``url`` and ``published_date`` keys).
+
+    Returns:
+        Dict mapping normalized URL (see ``_normalize_url_key``) to the
+        ``published_date`` string (``YYYY-MM-DD``).
+    """
+    out = {}
+    rows = news_data if isinstance(news_data, list) else []
+    for row in rows:
+        if not isinstance(row, dict) or "error" in row:
+            continue
+        u = row.get("url")
+        p = row.get("published_date")
+        if u and p:
+            out[_normalize_url_key(u)] = p
+    return out
+
+
 def create_news_lists(section):
+    """Build a per-section news list by filtering raw scraper feeds with an LLM.
+
+    For the given section (``"world"``, ``"rus"`` or ``"prices"``) the
+    function:
+
+    1. On any weekday except Saturday, loads the previously saved
+       ``<section>.json`` from the ``2 4 new_lists_json`` Drive folder so
+       results accumulate over the week. On Saturday it starts from an
+       empty list.
+    2. Iterates over the scraper feeds declared in
+       ``section_to_files[section]`` (Kommersant, Vedomosti, RBC,
+       Agroinvestor, RIA, Autostat, ...), loads each JSON from Drive and
+       sends it to the chat completions API together with the
+       section-specific prompt from ``lists_prompts[section]``.
+    3. Parses the model response (expected to be a JSON list of
+       ``{title, url}``), deduplicates by URL against items already kept,
+       and re-attaches the original ``published_date`` from the raw feed
+       via ``_published_date_map_from_feed``.
+    4. Saves the combined result back to Drive as ``<section>.json``
+       in the ``2 4 new_lists_json`` folder.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"`` — determines
+            which feeds and which prompt are used.
+
+    Returns:
+        None. The function logs progress and writes the result to Drive.
+    """
     current_weekday_num = datetime.today().weekday()
 
     # Если сегодня не суббота — пробуем прочитать уже сохранённый <section>.json
@@ -1144,6 +1317,13 @@ def create_news_lists(section):
             print(f"JSON '{json_filename}' содержит пустую структуру. Пропускаем.")
             continue
 
+        rows_for_dates = (
+            news_data
+            if isinstance(news_data, list)
+            else ([news_data] if isinstance(news_data, dict) else [])
+        )
+        published_map = _published_date_map_from_feed(rows_for_dates)
+
         # Формируем prompt для модели
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
         prompt_parts = [
@@ -1151,7 +1331,7 @@ def create_news_lists(section):
             str(news_json_string)
         ]
 
-        # Запрос к API
+        # Запрос к model API
         try:
             payload = {
                 "model": model_lists,
@@ -1208,17 +1388,18 @@ def create_news_lists(section):
                 print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
                 continue
 
-            # Фильтруем и добавляем новые новости с дополнительным полем day
+            # Фильтруем и добавляем новости; дата публикации берётся из сырого фида по URL
             for entry in items:
                 url_val = entry.get("url")
                 title_val = entry.get("title")
                 if not title_val or not url_val or url_val in seen_urls:
                     continue
                 seen_urls.add(url_val)
+                pub = published_map.get(_normalize_url_key(url_val)) or entry.get("published_date")
                 combined_items.append({
                     "title": title_val,
                     "url": url_val,
-                    "day": current_weekday_num  # добавляем номер дня недели
+                    "published_date": pub,
                 })
 
         except Exception as e:
@@ -1229,7 +1410,7 @@ def create_news_lists(section):
         print(f"For section '{section}', zero JSONs were successfully processed.")
         return
 
-    # Сохраняем объединённый результат с полем day в каждом элементе
+    # Сохраняем объединённый результат (published_date — дата публикации из фида, если была)
     output_file = f"{section}.json"
     save_to_drive(output_file, combined_items, my_folder=folder["2 4 new_lists_json"])
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
@@ -1246,13 +1427,38 @@ def create_news_lists(section):
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 
-create_news_lists("world")
-time.sleep(60)
-create_news_lists("rus")
-time.sleep(60)
-create_news_lists("prices")
+if should_run("lists"):
+    create_news_lists("world")
+    time.sleep(60)
+    create_news_lists("rus")
+    time.sleep(60)
+    create_news_lists("prices")
 
 def prioritise(section):
+    """Re-rank the section news list with an LLM and keep the top 40 items.
+
+    Loads ``<section>.json`` from the ``2 4 new_lists_json`` Drive folder,
+    feeds it together with the section-specific prompt from
+    ``prioritise_prompts[section]`` to the DeepSeek chat API, and expects
+    the model to return a JSON array of ``{title, url, published_date, grade}``.
+
+    The model output is:
+
+    * stored as-is in the ``3 news_lists_json_grade`` folder (debug copy
+      with grades);
+    * sorted by ``grade`` descending and trimmed to 40 items
+      (or simply truncated to 40 if grades are missing);
+    * stripped to ``{title, url, published_date}`` and written back to
+      ``<section>.json`` in the ``2 4 new_lists_json`` folder, replacing
+      the previous list.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"``.
+
+    Returns:
+        None. Logs progress and writes results to Drive; aborts early on
+        any I/O or model error.
+    """
     file_name = f"{section}.json"
     folder_id = folder["2 4 new_lists_json"] # 2 4 new_lists_json
     temp_folder_id = folder["3 news_lists_json_grade"] # 3 grade
@@ -1331,13 +1537,21 @@ def prioritise(section):
             items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
             items_top40 = items_sorted[:40]
             combined_items = [
-                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                {
+                    "title": e.get("title"),
+                    "url": e.get("url"),
+                    "published_date": e.get("published_date"),
+                }
                 for e in items_top40 if e.get("url")
             ]
         else:
             # Нет grade — берем первые 40 записей с валидным url
             combined_items = [
-                {"title": e.get("title"), "url": e.get("url"), "day": e.get("day")}
+                {
+                    "title": e.get("title"),
+                    "url": e.get("url"),
+                    "published_date": e.get("published_date"),
+                }
                 for e in items if e.get("url")
             ][:40]
     except Exception as e:
@@ -1348,13 +1562,33 @@ def prioritise(section):
     print(f"✅ prioritise({section}) — сохранён корректный JSON.")
 
 
-prioritise("world")
-time.sleep(60)
-prioritise("rus")
-time.sleep(60)
-prioritise("prices")
+if should_run("prioritise"):
+    prioritise("world")
+    time.sleep(60)
+    prioritise("rus")
+    time.sleep(60)
+    prioritise("prices")
 
 def design_wo_llm(section):
+    """Render the section news list as a plain numbered text file (no LLM).
+
+    Loads ``<section>.json`` from the ``2 4 new_lists_json`` Drive folder
+    and formats every item as::
+
+        N.\\t<title> (published: <published_date>)
+        <url>
+
+    Items without ``title`` or ``url`` are skipped. The resulting text is
+    saved as ``<section>.txt`` in the ``5 news_lists`` Drive folder. This
+    is the cheap fallback used in the daily pipeline; ``design`` is the
+    LLM-based variant.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"``.
+
+    Returns:
+        None. Writes the formatted ``.txt`` to Drive.
+    """
     file_name_json = f"{section}.json"
     try:
         file_id = find_file_in_drive(file_name_json, folder["2 4 new_lists_json"]) # 2 4 new_lists_json
@@ -1371,15 +1605,18 @@ def design_wo_llm(section):
     except json.JSONDecodeError as e:
         print(f"Ошибка парсинга JSON: {e}")
         return
-    # Формируем нумерованный список, как в примере, с сохранением day
+    # Формируем нумерованный список с датой публикации (или устаревшим полем day)
     formatted_lines = []
     for i, item in enumerate(news_items, 1):
         title = item.get("title", "").strip()
         url = item.get("url", "").strip()
-        day = item.get("day")  # сохраняем поле day, если есть
+        pub = item.get("published_date")
+        #day = item.get("day")
         if not title or not url:
             continue
-        if day is not None:
+        if pub:
+            line = f"{i}.\t{title} (published: {pub})\n{url}"
+        elif day is not None:
             line = f"{i}.\t{title} (day: {day})\n{url}"
         else:
             line = f"{i}.\t{title}\n{url}"
@@ -1393,6 +1630,23 @@ def design_wo_llm(section):
 
 
 def design(section):
+    """Render the section news list as a formatted text file via the LLM.
+
+    LLM-based counterpart of ``design_wo_llm``. Loads ``<section>.json``
+    from the ``2 4 new_lists_json`` Drive folder and asks the DeepSeek
+    chat API to produce a nicely formatted numbered list using the
+    ``prompt_design`` template plus the ``example`` reference layout.
+
+    The model reply is saved as ``<section>.txt`` in the
+    ``5 news_lists`` folder.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"``.
+
+    Returns:
+        None. Logs progress and writes the result to Drive; aborts on any
+        I/O or model error.
+    """
     file_name_json = f"{section}.json"
     try:
         file_id = find_file_in_drive(file_name_json, folder["2 4 new_lists_json"])
@@ -1449,22 +1703,50 @@ def design(section):
         print(f"Ошибка при вызове модели для '{file_name_json}': {e}")
         return
 
-for section in ["world", "rus", "prices"]:
-    try:
-        design_wo_llm(section)
-    except Exception as e:
-        print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
-        design(section)
-        time.sleep(60)
-#telegram_lists()
+if should_run("design"):
+    for section in ["world", "rus", "prices"]:
+        try:
+            design_wo_llm(section)
+        except Exception as e:
+            print(f"⚠️ Ошибка в design_wo_llm для '{section}': {e}. Пробую через LLM.")
+            design(section)
+            time.sleep(60)
+    telegram_lists()
 
 
 class NewsItem(BaseModel):
+    """Pydantic schema for a single top-news item with its theme.
+
+    Attributes:
+        theme: Short topical label assigned by the LLM
+            (e.g. ``"Регулирование"``, ``"Топливо"``).
+        title: News headline in Russian, without the source name.
+        url: Direct link to the article.
+    """
+
     theme: str
     title: str
     url: str
 
 def choose_top_urls(section):
+    """Pick the 4 most important themes from the section list using the LLM.
+
+    Loads ``<section>.json`` from ``2 4 new_lists_json`` and asks the
+    DeepSeek chat API (with the ``top_prompts[section]`` prompt) to
+    group the news into at most 4 themes with up to 3 articles each.
+    Every returned item is validated against the ``NewsItem`` Pydantic
+    model.
+
+    Valid items are saved as ``<section>.json`` in the ``6 news_top``
+    Drive folder. Invalid items are silently skipped with a warning.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"``.
+
+    Returns:
+        None. Writes a JSON file of ``{theme, title, url}`` entries to
+        Drive; aborts on any I/O or model error.
+    """
     file_name = f"{section}.json"
     folder_id = folder["2 4 new_lists_json"] # 2 4 
     try:
@@ -1583,7 +1865,7 @@ def choose_top_urls(section):
     print(f"✅ choose_top_urls({section}) — сохранён корректный JSON с новостями и темами.")
 
 
-if datetime.today().weekday() == 3: ################### 3 - Thu
+if should_run("top"):
     choose_top_urls("world")
     time.sleep(60)
     choose_top_urls("rus")
@@ -1591,7 +1873,43 @@ if datetime.today().weekday() == 3: ################### 3 - Thu
     choose_top_urls("prices")
 
 def read_top_urls(section, max_chars=3000):
+    """Download and extract the article body for every top URL of a section.
+
+    Reads the file produced by ``choose_top_urls`` from the
+    ``6 news_top`` Drive folder (``<section>.json``). For each item it
+    fetches the article HTML, runs ``extract_main_text`` to keep only
+    meaningful paragraphs, and stores ``{title, url, theme, text}`` in
+    ``<section>.json`` inside the ``7 news_top_texts`` folder.
+
+    Errors on individual URLs are logged and skipped — the rest of the
+    items continue to be processed.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"``.
+        max_chars: Maximum length of the extracted article body
+            (truncated on the last whitespace before the limit).
+
+    Returns:
+        None. Writes the per-section text dump to Drive.
+    """
     def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
+        """Extract a short readable summary from a parsed HTML page.
+
+        Iterates over ``<p>`` tags and keeps the first ``max_paragraphs``
+        whose text is at least ``min_paragraph_len`` characters long and
+        is not obviously a cookie/subscription/advertising notice. The
+        kept paragraphs are joined with spaces and truncated to
+        ``max_chars`` (cut on the last whitespace boundary).
+
+        Args:
+            soup: ``BeautifulSoup`` object built from the article page.
+            max_chars: Hard cap on the returned text length.
+            min_paragraph_len: Minimum length of a paragraph to be kept.
+            max_paragraphs: Maximum number of paragraphs to collect.
+
+        Returns:
+            A single string with the cleaned article excerpt.
+        """
         paragraphs = []
         for p in soup.find_all('p'):
             text = p.get_text(" ", strip=True)
@@ -1652,13 +1970,28 @@ def read_top_urls(section, max_chars=3000):
     )
     print(f"{section}: сохранено {len(results)} ссылок с текстами.")
 
-if datetime.today().weekday() == 3: ##################3 - Thu
+if should_run("read_top"):
     read_top_urls("world")
     read_top_urls("rus")
     read_top_urls("prices")
 
 
 def create_bullets(section):
+    """Generate the final analytical bullet points for a section via the LLM.
+
+    Loads ``<section>.json`` (top articles with their bodies) from the
+    ``7 news_top_texts`` Drive folder, sends it together with the
+    ``bullets_prompts[section]`` prompt to the DeepSeek chat API, and
+    writes the model's plain-text reply to
+    ``report_<section>.txt`` in the ``8 news_final`` folder.
+
+    Args:
+        section: One of ``"world"``, ``"rus"``, ``"prices"``.
+
+    Returns:
+        None. Logs progress and saves the bullets file to Drive; aborts
+        on any I/O or model error.
+    """
     list_file = f"{section}.json"
     try:
         file_id = find_file_in_drive(list_file, folder["7 news_top_texts"]) # 7 news_top_texts
@@ -1684,7 +2017,7 @@ def create_bullets(section):
                 {"role": "system", "content": "Ты — профессиональный макроэкономический аналитик Департамента денежно-кредитной политики ЦБ РФ. Твоя задача — подготовить краткие, точные и фактологические буллиты на основе предоставленных новостей, которые будут использованы в еженедельной аналитической записке для руководства банка. Будь предельно объективен, избегай интерпретаций и сосредоточься только на фактах из предоставленных текстов. Твоя работа напрямую влияет на принятие решений по денежно-кредитной политике."},
                 {"role": "user", "content": prompt_text}
             ],
-            "temperature": 0.1,
+            "temperature": 0.5,
         }
 
 
@@ -1723,11 +2056,11 @@ def create_bullets(section):
         print(f"Ошибка при вызове модели для {section}: {e}")
         return
 
-if datetime.today().weekday() == 3: ###################3 - Thu
+if should_run("bullets"):
     create_bullets("world")
     time.sleep(60)
     create_bullets("rus")
     time.sleep(60)
     create_bullets("prices")
-    #telegram_bullets()
+    telegram_bullets()
     
