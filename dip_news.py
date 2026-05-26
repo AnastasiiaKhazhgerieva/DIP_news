@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-read GUIDE.md to understand what’s going on here.    
+"""dip_news.ipynb 
+is the same file, but more convenient for running  locally.
+    
 """
 # packages
 
@@ -41,7 +42,7 @@ from pydantic import BaseModel
 #       python dip_news.py --stage bullets --force-thursday
 # Env:  STAGE=scrape python dip_news.py
 #       STAGE="lists,prioritise" python dip_news.py
-_STAGE_ORDER = ["scrape", "lists", "prioritise", "design", "top", "read_top", "bullets"]
+_STAGE_ORDER = ["scrape", "summarize", "lists", "prioritise", "design", "top", "read_top", "bullets"]
 _VALID_STAGES = set(_STAGE_ORDER) | {"all"}
 
 _parser = argparse.ArgumentParser(
@@ -96,7 +97,7 @@ print(
 # Sandbox mode
 # USE_SANDBOX = os.environ.get("USE_SANDBOX", "True").lower() == "true"
 USE_SANDBOX = False  # Set to True to use sandbox folders
-FOLDERS_JSON = os.environ.get("FOLDERS_SANDBOX") if USE_SANDBOX else os.environ.get("FOLDERS_MAIN")
+FOLDERS_JSON = os.environ. get("FOLDERS_SANDBOX") if USE_SANDBOX else os.environ.get("FOLDERS_MAIN")
 print("Folders:", "SANDBOX (FOLDERS_SANDBOX)" if USE_SANDBOX else "MAIN (FOLDERS_MAIN)")
 
 
@@ -203,6 +204,7 @@ MY_FOLDER_ID = folder["5 news_lists"] # 5 new lists
 API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
 #API_KEY = os.environ.get("OPENROUTER_API_KEY") 
 
+
 if not API_KEY:
     raise ValueError("There is no API key (check the file or environment variable)!")
 
@@ -217,6 +219,8 @@ url = "https://api.deepseek.com/v1/chat/completions"
 
 model_lists = "deepseek-chat" # direct deepseek
 model_bullets = "deepseek-chat" # direct deepseek
+#model_lists = "openrouter/free" # openrouter free models
+#model_bullets = "openrouter/free" # openrouter free models
 #model_lists = "deepseek/deepseek-chat-v3-0324" # openrouter
 #model_bullets = "deepseek/deepseek-chat-v3-0324" #openrouter
 # model_bullets = "qwen/qwen-2.5-72b-instruct" #openrouter
@@ -224,8 +228,26 @@ model_bullets = "deepseek-chat" # direct deepseek
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+
 }
+
+
+def log_llm_response(result: dict, label: str = "") -> None:
+    """Print OpenRouter routing metadata after a chat completion."""
+    prefix = f"[{label}] " if label else ""
+    print(f"{prefix}Routed to model: {result.get('model')}")
+    print(f"{prefix}Provider      : {result.get('provider')}")
+    print(f"{prefix}Usage         : {result.get('usage')}")
+
+
+def post_llm(payload: dict, label: str = "") -> dict:
+    """POST to the LLM endpoint, raise on HTTP errors, log routing/usage."""
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
+    log_llm_response(result, label)
+    return result
 
 # gemini api key
 #API_KEY = os.environ.get("GEMINI_API_KEY") # строка для запуска через workflow
@@ -1233,6 +1255,198 @@ def _published_date_map_from_feed(news_data) -> dict:
     return out
 
 
+def _summary_map_from_feed(news_data) -> dict:
+    """Build a ``{url: summary}`` map from a raw news feed JSON."""
+    out = {}
+    rows = news_data if isinstance(news_data, list) else []
+    for row in rows:
+        if not isinstance(row, dict) or "error" in row:
+            continue
+        u = row.get("url")
+        s = row.get("summary")
+        if u and s:
+            out[_normalize_url_key(u)] = s
+    return out
+
+
+def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
+    """Extract a short readable excerpt from a parsed HTML page."""
+    paragraphs = []
+    for p in soup.find_all("p"):
+        text = p.get_text(" ", strip=True)
+        if len(text) < min_paragraph_len:
+            continue
+        low = text.lower()
+        if any(word in low for word in ["cookie", "subscribe", "advert", "реклама", "подпишитесь"]):
+            continue
+        paragraphs.append(text)
+        if len(paragraphs) >= max_paragraphs:
+            break
+    combined_text = " ".join(paragraphs)
+    if len(combined_text) > max_chars:
+        combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
+    return combined_text
+
+
+SUMMARY_CACHE_FILE = "_summary_cache.json"
+SUMMARY_CHUNK_SIZE = 8
+SCRAPER_FEED_FILES = [
+    "kom_econ.json",
+    "kom_world.json",
+    "kom_markets.json",
+    "ved.json",
+    "rbc.json",
+    "agro.json",
+    "ria.json",
+    "autostat.json",
+]
+
+
+def _load_summary_cache() -> dict:
+    """Load URL→summary cache from Drive; reset to {} every Saturday."""
+    if datetime.today().weekday() == 5:  # Saturday — same weekly reset as lists
+        print("Saturday: resetting summary cache for the new week.")
+        return {}
+    try:
+        file_id = find_file_in_drive(SUMMARY_CACHE_FILE, folder["1 news_jsons"])
+        data = json.loads(download_text_file(file_id))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_summary_cache(cache: dict) -> None:
+    save_to_drive(
+        SUMMARY_CACHE_FILE,
+        cache,
+        my_folder=folder["1 news_jsons"],
+        file_format="json",
+    )
+
+
+def _fetch_article_body(url: str, max_chars=1500, max_paragraphs=3) -> str:
+    try:
+        resp = requests.get(url, timeout=10, headers=HEADERS, proxies=proxies)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        return extract_main_text(soup, max_chars=max_chars, max_paragraphs=max_paragraphs)
+    except Exception as e:
+        print(f"  ⚠️ body fetch failed for {url}: {e}")
+        return ""
+
+
+def _summarise_batch(articles):
+    """Summarise up to SUMMARY_CHUNK_SIZE articles in one LLM call.
+
+    Args:
+        articles: list of dicts with keys url, title, body.
+
+    Returns:
+        Dict mapping normalized URL to summary string.
+    """
+    payload_items = [
+        {"url": a["url"], "title": a.get("title", ""), "text": a["body"]}
+        for a in articles
+    ]
+    prompt = (
+        "Для каждой новости напиши краткое содержание в 1–2 предложениях "
+        "(только факты, без оценок). Ответ — JSON-объект с ключом "
+        '"summaries": массив [{"url":"...","summary":"..."}, ...] '
+        "— по одному элементу на каждую новость.\n\n"
+        + json.dumps(payload_items, ensure_ascii=False, indent=2)
+    )
+    payload = {
+        "model": model_lists,
+        "messages": [
+            {"role": "system", "content": "Отвечай строго в формате JSON."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+    }
+    result = post_llm(payload, label="summarize")
+    raw = result["choices"][0]["message"]["content"]
+    parsed = json.loads(raw)
+    if isinstance(parsed, dict):
+        for key in ("summaries", "items", "news", "results"):
+            if isinstance(parsed.get(key), list):
+                parsed = parsed[key]
+                break
+        else:
+            parsed = list(parsed.values())[0] if len(parsed) == 1 else []
+    if not isinstance(parsed, list):
+        raise ValueError(f"Unexpected summarise response type: {type(parsed)}")
+
+    out = {}
+    for row in parsed:
+        if not isinstance(row, dict):
+            continue
+        u = row.get("url")
+        s = (row.get("summary") or row.get("text") or "").strip()
+        if u and s:
+            out[_normalize_url_key(u)] = s
+    return out
+
+
+def summarize_feeds():
+    """Enrich every scraped feed item with a ``summary`` field (stage 1.5).
+
+    Reads each JSON under ``1 news_jsons``, fetches article bodies for items
+    without a summary, calls the LLM in batches of ``SUMMARY_CHUNK_SIZE``,
+    writes summaries back into the same feed files, and persists a weekly
+    URL→summary cache in ``_summary_cache.json`` (cleared every Saturday).
+    """
+    cache = _load_summary_cache()
+
+    for feed_name in SCRAPER_FEED_FILES:
+        try:
+            file_id = find_file_in_drive(feed_name, folder["1 news_jsons"])
+            items = json.loads(download_text_file(file_id))
+        except Exception as e:
+            print(f"  ⚠️ skipping {feed_name}: {e}")
+            continue
+
+        if not isinstance(items, list):
+            print(f"  ⚠️ skipping {feed_name}: expected a JSON list")
+            continue
+
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            key = _normalize_url_key(it.get("url", ""))
+            if key and key in cache and not it.get("summary"):
+                it["summary"] = cache[key]
+
+        needs = [it for it in items if isinstance(it, dict) and it.get("url") and not it.get("summary")]
+        if needs:
+            print(f"  {feed_name}: {len(needs)} item(s) to summarise")
+            articles = []
+            for it in needs:
+                body = _fetch_article_body(it["url"])
+                if body:
+                    articles.append({"url": it["url"], "title": it.get("title", ""), "body": body, "item": it})
+
+            for i in range(0, len(articles), SUMMARY_CHUNK_SIZE):
+                chunk = articles[i:i + SUMMARY_CHUNK_SIZE]
+                try:
+                    batch_out = _summarise_batch(chunk)
+                except Exception as e:
+                    print(f"  ⚠️ LLM batch failed for {feed_name}: {e}")
+                    continue
+                for a in chunk:
+                    s = batch_out.get(_normalize_url_key(a["url"]), "")
+                    if s:
+                        a["item"]["summary"] = s
+                        cache[_normalize_url_key(a["url"])] = s
+                time.sleep(2)
+
+        save_to_drive(feed_name, items, my_folder=folder["1 news_jsons"], file_format="json")
+        print(f"  ✅ {feed_name} enriched with summaries")
+
+    _save_summary_cache(cache)
+    print("✅ summarize_feeds() — done.")
+
+
 def create_news_lists(section):
     """Build a per-section news list by filtering raw scraper feeds with an LLM.
 
@@ -1250,8 +1464,8 @@ def create_news_lists(section):
        section-specific prompt from ``lists_prompts[section]``.
     3. Parses the model response (expected to be a JSON list of
        ``{title, url}``), deduplicates by URL against items already kept,
-       and re-attaches the original ``published_date`` from the raw feed
-       via ``_published_date_map_from_feed``.
+       and        re-attaches the original ``published_date`` and ``summary`` from the raw feed
+       via ``_published_date_map_from_feed`` / ``_summary_map_from_feed``.
     4. Saves the combined result back to Drive as ``<section>.json``
        in the ``2 4 new_lists_json`` folder.
 
@@ -1322,6 +1536,7 @@ def create_news_lists(section):
             else ([news_data] if isinstance(news_data, dict) else [])
         )
         published_map = _published_date_map_from_feed(rows_for_dates)
+        summary_map = _summary_map_from_feed(rows_for_dates)
 
         # Формируем prompt для модели
         news_json_string = json.dumps(news_data, ensure_ascii=False, indent=2)
@@ -1341,9 +1556,7 @@ def create_news_lists(section):
                 "temperature": 0.2,
                 "response_format": {"type": "json_object"}
             }
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            result = response.json()
+            result = post_llm(payload, label=f"lists/{json_filename}")
 
 
         # # Запрос к Perplexity API
@@ -1394,12 +1607,17 @@ def create_news_lists(section):
                 if not title_val or not url_val or url_val in seen_urls:
                     continue
                 seen_urls.add(url_val)
-                pub = published_map.get(_normalize_url_key(url_val)) or entry.get("published_date")
-                combined_items.append({
+                url_key = _normalize_url_key(url_val)
+                pub = published_map.get(url_key) or entry.get("published_date")
+                summary_val = summary_map.get(url_key) or entry.get("summary")
+                row = {
                     "title": title_val,
                     "url": url_val,
                     "published_date": pub,
-                })
+                }
+                if summary_val:
+                    row["summary"] = summary_val
+                combined_items.append(row)
 
         except Exception as e:
             print(f"Ошибка при вызове модели для '{json_filename}': {e}. Пропускаем.")
@@ -1414,17 +1632,11 @@ def create_news_lists(section):
     save_to_drive(output_file, combined_items, my_folder=folder["2 4 new_lists_json"])
     print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
 
-    if not combined_items:
-        print(f"For section '{section}', zero JSONs were successfully processed.")
-        return
-
-    # Сохраняем объединённый результат
-    output_file = f"{section}.json"
-    save_to_drive(output_file, combined_items, my_folder=folder["2 4 new_lists_json"])
-    print(f"✅ create_news_lists({section}) — успешно обработан и сохранён файл.")
-
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
+
+if should_run("summarize"):
+    summarize_feeds()
 
 if should_run("lists"):
     create_news_lists("world")
@@ -1439,7 +1651,8 @@ def prioritise(section):
     Loads ``<section>.json`` from the ``2 4 new_lists_json`` Drive folder,
     feeds it together with the section-specific prompt from
     ``prioritise_prompts[section]`` to the DeepSeek chat API, and expects
-    the model to return a JSON array of ``{title, url, published_date, grade}``.
+    the model to return a JSON array of
+    ``{title, url, published_date, summary, grade}``.
 
     The model output is:
 
@@ -1447,7 +1660,7 @@ def prioritise(section):
       with grades);
     * sorted by ``grade`` descending and trimmed to 40 items
       (or simply truncated to 40 if grades are missing);
-    * stripped to ``{title, url, published_date}`` and written back to
+    * stripped to ``{title, url, published_date, summary}`` and written back to
       ``<section>.json`` in the ``2 4 new_lists_json`` folder, replacing
       the previous list.
 
@@ -1475,6 +1688,12 @@ def prioritise(section):
     if not news_list_raw.strip():
         print(f"❌ Файл {file_name} пустой.")
         return
+    try:
+        _input_items_for_maps = json.loads(news_list_raw)
+    except json.JSONDecodeError:
+        _input_items_for_maps = []
+    input_published_map = _published_date_map_from_feed(_input_items_for_maps)
+    input_summary_map = _summary_map_from_feed(_input_items_for_maps)
     # Готовим prompt
     prompt_prioritise = prioritise_prompts.get(section, "")
     prompt_text = "\n".join([str(prompt_prioritise), news_list_raw])
@@ -1502,12 +1721,7 @@ def prioritise(section):
     #         "response_mime_type": "application/json",
     #         "disable_search": True
     #     }
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        
-        
-        # Проверка ответа
+        result = post_llm(payload, label=f"prioritise/{section}")
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
             print(f"❌ Модель не вернула ответ для '{file_name}'.")
@@ -1531,28 +1745,29 @@ def prioritise(section):
         
         # Сохраняем полный ответ в отдельную папку
         save_to_drive(file_name, items, temp_folder_id, file_format="json")
+
+        def _row_from_input(e):
+            url_val = e.get("url")
+            url_key = _normalize_url_key(url_val)
+            pub = input_published_map.get(url_key) or e.get("published_date")
+            summary_val = input_summary_map.get(url_key) or e.get("summary")
+            row = {
+                "title": e.get("title"),
+                "url": url_val,
+                "published_date": pub,
+            }
+            if summary_val:
+                row["summary"] = summary_val
+            return row
+
         # Обработка с grade
         if all(isinstance(entry, dict) and "grade" in entry for entry in items):
             items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
             items_top40 = items_sorted[:40]
-            combined_items = [
-                {
-                    "title": e.get("title"),
-                    "url": e.get("url"),
-                    "published_date": e.get("published_date"),
-                }
-                for e in items_top40 if e.get("url")
-            ]
+            combined_items = [_row_from_input(e) for e in items_top40 if e.get("url")]
         else:
             # Нет grade — берем первые 40 записей с валидным url
-            combined_items = [
-                {
-                    "title": e.get("title"),
-                    "url": e.get("url"),
-                    "published_date": e.get("published_date"),
-                }
-                for e in items if e.get("url")
-            ][:40]
+            combined_items = [_row_from_input(e) for e in items if e.get("url")][:40]
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
@@ -1687,9 +1902,7 @@ def design(section):
         # }
 
 
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
+        result = post_llm(payload, label=f"design/{section}")
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
             print(f"Модель не вернула ответ для '{file_name_json}'.")
@@ -1820,9 +2033,7 @@ def choose_top_urls(section):
         #     }
         # }
         
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
+        result = post_llm(payload, label=f"top/{section}")
         choices = result.get("choices")
         if not choices:
             print("❌ В ответе API нет поля 'choices'.")
@@ -1891,41 +2102,6 @@ def read_top_urls(section, max_chars=3000):
     Returns:
         None. Writes the per-section text dump to Drive.
     """
-    def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
-        """Extract a short readable summary from a parsed HTML page.
-
-        Iterates over ``<p>`` tags and keeps the first ``max_paragraphs``
-        whose text is at least ``min_paragraph_len`` characters long and
-        is not obviously a cookie/subscription/advertising notice. The
-        kept paragraphs are joined with spaces and truncated to
-        ``max_chars`` (cut on the last whitespace boundary).
-
-        Args:
-            soup: ``BeautifulSoup`` object built from the article page.
-            max_chars: Hard cap on the returned text length.
-            min_paragraph_len: Minimum length of a paragraph to be kept.
-            max_paragraphs: Maximum number of paragraphs to collect.
-
-        Returns:
-            A single string with the cleaned article excerpt.
-        """
-        paragraphs = []
-        for p in soup.find_all('p'):
-            text = p.get_text(" ", strip=True)
-            if len(text) < min_paragraph_len:
-                continue
-            low = text.lower()
-            # Фильтр по рекламе/подпискам
-            if any(word in low for word in ["cookie", "subscribe", "advert", "реклама", "подпишитесь"]):
-                continue
-            paragraphs.append(text)
-            if len(paragraphs) >= max_paragraphs:
-                break
-        combined_text = " ".join(paragraphs)
-        if len(combined_text) > max_chars:
-            combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
-        return combined_text
-
     # Имя файла с топ ссылками для секции, например "world.json"
     file_name = f"{section}.json"
 
@@ -2029,9 +2205,7 @@ def create_bullets(section):
         #     "temperature": 0.7,
         # }
 
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
+        result = post_llm(payload, label=f"bullets/{section}")
 
         choices = result.get("choices")
         if not choices or not choices[0].get("message", {}).get("content"):
