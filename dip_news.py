@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""dip_news.ipynb 
-is the same file, but more convenient for running  locally.
+"""dip_news.py` is the main workflow. It produces a weekly report on economic news.
+For a detailed description of what happens in the workflow, see GUIDE.md.
     
 """
 # packages
@@ -229,7 +229,8 @@ model_bullets = "deepseek-chat" # direct deepseek
 headers = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
-
+    #"HTTP-Referer": "https://github.com/dip-news",
+    #"X-Title": "dip_news",
 }
 
 
@@ -1271,17 +1272,35 @@ def _summary_map_from_feed(news_data) -> dict:
 
 def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
     """Extract a short readable excerpt from a parsed HTML page."""
-    paragraphs = []
-    for p in soup.find_all("p"):
-        text = p.get_text(" ", strip=True)
-        if len(text) < min_paragraph_len:
-            continue
-        low = text.lower()
-        if any(word in low for word in ["cookie", "subscribe", "advert", "реклама", "подпишитесь"]):
-            continue
-        paragraphs.append(text)
-        if len(paragraphs) >= max_paragraphs:
-            break
+    _skip_words = ("cookie", "subscribe", "advert", "реклама", "подпишитесь")
+
+    def _collect(texts):
+        paragraphs = []
+        seen = set()
+        for text in texts:
+            if not isinstance(text, str):
+                continue
+            text = text.strip()
+            if len(text) < min_paragraph_len or text in seen:
+                continue
+            low = text.lower()
+            if any(word in low for word in _skip_words):
+                continue
+            seen.add(text)
+            paragraphs.append(text)
+            if len(paragraphs) >= max_paragraphs:
+                break
+        return paragraphs
+
+    paragraphs = _collect(p.get_text(" ", strip=True) for p in soup.find_all("p"))
+
+    # RIA and similar sites: article body uses div.article__text, not <p>
+    if not paragraphs:
+        root = soup.select_one('div.article__body, [itemprop="articleBody"]')
+        if root:
+            blocks = root.select("div.article__text, div.article__block")
+            paragraphs = _collect(b.get_text(" ", strip=True) for b in blocks)
+
     combined_text = " ".join(paragraphs)
     if len(combined_text) > max_chars:
         combined_text = combined_text[:max_chars].rsplit(" ", 1)[0] + "..."
