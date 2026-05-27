@@ -27,7 +27,7 @@ function Read-Key([string]$path) {
 }
 
 # Match USE_SANDBOX in dip_news.py: $true -> sandbox folders + sandbox tg keys
-$useSandbox = $True
+$useSandbox = $False
 
 if ($useSandbox) {
     $env:FOLDERS_SANDBOX    = Read-Key ".\keys\folders_sandbox.txt"
@@ -42,7 +42,7 @@ else {
 
 $env:PROXY            = Read-Key ".\keys\proxy.txt"
 $env:GOOGLE_TOKEN_B64 = Read-Key ".\keys\GOOGLE_TOKEN_B64.txt"
-#$env:DEEPSEEK_API_KEY = Read-Key ".\keys\deepseek_api_key.txt"
+$env:DEEPSEEK_API_KEY = Read-Key ".\keys\deepseek_api_key.txt"
 $env:OPENROUTER_API_KEY = Read-Key ".\keys\openrouter.txt"
 
 $activate = ".\.venv\Scripts\Activate.ps1"
