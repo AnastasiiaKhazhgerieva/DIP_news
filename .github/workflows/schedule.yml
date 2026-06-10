@@ -2,12 +2,12 @@ name: Scheduled DIP News
 
 on:
   schedule:
-    # Среда в 14:00 MSK → 11:00 UTC
-    - cron: '0 11 * * Wed'
-    # Пятница в 09:30 MSK → 7:30 UTC
-    - cron: '30 6 * * Fri'
+    # Среда в 12:04 MSK → 9:04 UTC
+    - cron: '04 9 * * Wed'
+    # Пятница в 09:28 MSK → 6:28 UTC
+    - cron: '28 6 * * Fri'
     # В остальные дни (понедельник, вторник, четверг, суббота, воскресенье) в 13:00 MSK → 10:00 UTC
-    - cron: '0 10 * * Mon,Thu,Tue,Sat,Sun'
+    - cron: '03 10 * * Mon,Thu,Tue,Sat,Sun'
   workflow_dispatch: {}
 
 jobs:
