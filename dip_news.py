@@ -3,12 +3,14 @@
 For a detailed description of what happens in the workflow, see GUIDE.md.
     
 """
+
 # packages
 
 import requests
 import json
 import time
 import datetime
+import html
 import os
 import pandas as pd
 #import google.generativeai as genai
@@ -308,16 +310,48 @@ def send_telegram_message(text: str,
 def telegram_lists():
     link_news = f"https://drive.google.com/drive/folders/{folder['5 news_lists']}"
     text = f'Новостная записка обновлена. См. отчёты по <a href="{link_news}">ссылке</a>'
-    send_telegram_message(text)
+    try:
+        send_telegram_message(text)
+    except Exception as e:
+        print(f"⚠️ Telegram notification failed, continuing pipeline: {e}")
 
 def telegram_bullets():
     link_bullets = f"https://drive.google.com/drive/folders/{folder['8 news_final']}"
     text = f'Готовы буллиты к новостной записке. См. отчёты по <a href="{link_bullets}">ссылке</a>'
-    send_telegram_message(text)
+    try:
+        send_telegram_message(text)
+    except Exception as e:
+        print(f"⚠️ Telegram notification failed, continuing pipeline: {e}")
     
 
 
 ### Functions for google drive
+
+def _drive_name_query(file_name: str, folder_id: str) -> str:
+    escaped_name = file_name.replace("\\", "\\\\").replace("'", "\\'")
+    return (
+        f"name = '{escaped_name}' "
+        f"and '{folder_id}' in parents "
+        f"and trashed = false"
+    )
+
+
+def _find_latest_file_in_drive(file_name: str, folder_id: str):
+    """Return the newest Drive file metadata for an exact name in a folder."""
+    try:
+        resp = drive_service.files().list(
+            q=_drive_name_query(file_name, folder_id),
+            spaces="drive",
+            fields="files(id, name, modifiedTime)",
+            orderBy="modifiedTime desc",
+            pageSize=1
+        ).execute()
+    except HttpError as e:
+        raise RuntimeError(f"Error accessing Drive API: {e}")
+
+    items = resp.get("files", [])
+    return items[0] if items else None
+
 
 def find_file_in_drive(file_name: str, folder_id=folder["5 news_lists"]) -> str:
     """Look up a Drive file by exact name inside a folder.
@@ -329,23 +363,9 @@ def find_file_in_drive(file_name: str, folder_id=folder["5 news_lists"]) -> str:
     Returns:
         File ID if a matching file exists, otherwise ``None``.
     """
-    try:
-        resp = drive_service.files().list(
-            q=(
-                f"name = '{file_name}' "
-                f"and '{folder_id}' in parents "
-                f"and trashed = false"
-            ),
-            spaces="drive",
-            fields="files(id, name)",
-            pageSize=1
-        ).execute()
-    except HttpError as e:
-        raise RuntimeError(f"Error accessing Drive API: {e}")
-
-    items = resp.get("files", [])
-    if items:
-        return items[0]["id"]
+    item = _find_latest_file_in_drive(file_name, folder_id)
+    if item:
+        return item["id"]
 
     return None
 
@@ -390,15 +410,9 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
     # Check if file already exists
     existing_file_id = None
     try:
-        resp = drive_service.files().list(
-            q=f"name = '{file_name}' and '{my_folder}' in parents and trashed = false",
-            spaces="drive",
-            fields="files(id, name)",
-            pageSize=1
-        ).execute()
-        items = resp.get("files", [])
-        if items:
-            existing_file_id = items[0]["id"]
+        item = _find_latest_file_in_drive(file_name, my_folder)
+        if item:
+            existing_file_id = item["id"]
     except Exception as e:
         print("Warning: can't check if the file already exists:", e)
 
@@ -1256,6 +1270,20 @@ def _published_date_map_from_feed(news_data) -> dict:
     return out
 
 
+def _title_map_from_feed(news_data) -> dict:
+    """Build a ``{url: title}`` map from source news rows."""
+    out = {}
+    rows = news_data if isinstance(news_data, list) else []
+    for row in rows:
+        if not isinstance(row, dict) or "error" in row:
+            continue
+        u = row.get("url")
+        title = row.get("title")
+        if u and title:
+            out[_normalize_url_key(u)] = title
+    return out
+
+
 def _summary_map_from_feed(news_data) -> dict:
     """Build a ``{url: summary}`` map from a raw news feed JSON."""
     out = {}
@@ -1268,6 +1296,19 @@ def _summary_map_from_feed(news_data) -> dict:
         if u and s:
             out[_normalize_url_key(u)] = s
     return out
+
+
+def _coerce_items_list(parsed_json):
+    """Return a list whether the model emitted a bare array or an object wrapper."""
+    if isinstance(parsed_json, list):
+        return parsed_json
+    if isinstance(parsed_json, dict):
+        for key in ("items", "news", "results", "data"):
+            value = parsed_json.get(key)
+            if isinstance(value, list):
+                return value
+        return [parsed_json]
+    return None
 
 
 def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
@@ -1554,6 +1595,7 @@ def create_news_lists(section):
             if isinstance(news_data, list)
             else ([news_data] if isinstance(news_data, dict) else [])
         )
+        title_map = _title_map_from_feed(rows_for_dates)
         published_map = _published_date_map_from_feed(rows_for_dates)
         summary_map = _summary_map_from_feed(rows_for_dates)
 
@@ -1611,22 +1653,22 @@ def create_news_lists(section):
                 print(f"Ответ модели для '{json_filename}' не содержит валидный JSON: {e}")
                 continue
 
-            # Приводим к списку, если словарь
-            if isinstance(items, dict):
-                items = [items]
-
+            items = _coerce_items_list(items)
             if not isinstance(items, list):
                 print(f"Ответ модели для '{json_filename}' вернул не список, а {type(items)}. Пропускаем.")
                 continue
 
-            # Фильтруем и добавляем новости; дата публикации берётся из сырого фида по URL
+            # Фильтруем и добавляем новости; поля восстанавливаются из сырого фида по URL
             for entry in items:
                 url_val = entry.get("url")
-                title_val = entry.get("title")
-                if not title_val or not url_val or url_val in seen_urls:
+                if not url_val or url_val in seen_urls:
+                    continue
+                url_key = _normalize_url_key(url_val)
+                title_val = title_map.get(url_key)
+                if not title_val:
+                    print(f"Пропускаем URL не из исходного фида: {url_val}")
                     continue
                 seen_urls.add(url_val)
-                url_key = _normalize_url_key(url_val)
                 pub = published_map.get(url_key) or entry.get("published_date")
                 summary_val = summary_map.get(url_key) or entry.get("summary")
                 row = {
@@ -1711,11 +1753,19 @@ def prioritise(section):
         _input_items_for_maps = json.loads(news_list_raw)
     except json.JSONDecodeError:
         _input_items_for_maps = []
+    input_title_map = _title_map_from_feed(_input_items_for_maps)
     input_published_map = _published_date_map_from_feed(_input_items_for_maps)
     input_summary_map = _summary_map_from_feed(_input_items_for_maps)
     # Готовим prompt
     prompt_prioritise = prioritise_prompts.get(section, "")
-    prompt_text = "\n".join([str(prompt_prioritise), news_list_raw])
+    compact_output_instruction = (
+        "Верни строго JSON-массив без markdown. "
+        "В каждом объекте должны быть только поля: "
+        '{"url": "<точный URL из входного списка>", "grade": <число от 0 до 10>}. '
+        "Не возвращай title, summary, published_date и другие длинные поля. "
+        "Не меняй URL. Верни не больше 40 объектов."
+    )
+    prompt_text = "\n".join([str(prompt_prioritise), compact_output_instruction, news_list_raw])
     #print(prompt_text[:3000])
     
     try:
@@ -1755,9 +1805,13 @@ def prioritise(section):
             items = json.loads(assistant_json_str)
         except json.JSONDecodeError as e:
             print(f"❌ Ответ модели для '{file_name}' не содержит валидный JSON: {e}")
-            return
-        if isinstance(items, dict):
-            items = [items]
+            print(f"⚠️ prioritise({section}) fallback: беру первые 40 входных URL без LLM-ранжирования.")
+            items = [
+                {"url": row.get("url"), "grade": 0}
+                for row in _input_items_for_maps
+                if isinstance(row, dict) and row.get("url")
+            ][:40]
+        items = _coerce_items_list(items)
         if not isinstance(items, list):
             print(f"❌ Ответ модели для '{file_name}' вернул не список, а {type(items)}.")
             return
@@ -1768,10 +1822,14 @@ def prioritise(section):
         def _row_from_input(e):
             url_val = e.get("url")
             url_key = _normalize_url_key(url_val)
+            title_val = input_title_map.get(url_key)
+            if not title_val:
+                print(f"Пропускаем URL не из входного списка prioritise: {url_val}")
+                return None
             pub = input_published_map.get(url_key) or e.get("published_date")
             summary_val = input_summary_map.get(url_key) or e.get("summary")
             row = {
-                "title": e.get("title"),
+                "title": title_val,
                 "url": url_val,
                 "published_date": pub,
             }
@@ -1783,10 +1841,10 @@ def prioritise(section):
         if all(isinstance(entry, dict) and "grade" in entry for entry in items):
             items_sorted = sorted(items, key=lambda x: x["grade"], reverse=True)
             items_top40 = items_sorted[:40]
-            combined_items = [_row_from_input(e) for e in items_top40 if e.get("url")]
+            combined_items = [row for row in (_row_from_input(e) for e in items_top40 if e.get("url")) if row]
         else:
             # Нет grade — берем первые 40 записей с валидным url
-            combined_items = [_row_from_input(e) for e in items if e.get("url")][:40]
+            combined_items = [row for row in (_row_from_input(e) for e in items if e.get("url")) if row][:40]
     except Exception as e:
         print(f"❌ Ошибка при вызове модели для '{file_name}': {e}")
         return
@@ -2066,6 +2124,17 @@ def choose_top_urls(section):
         # Парсим JSON и валидируем через Pydantic
         import json
         data = json.loads(content)
+        if isinstance(data, dict):
+            for key in ("items", "news", "top", "result", "data"):
+                if isinstance(data.get(key), list):
+                    data = data[key]
+                    break
+            else:
+                print(f"❌ JSON ответа для '{file_name}' не содержит списка новостей.")
+                return
+        if not isinstance(data, list):
+            print(f"❌ JSON ответа для '{file_name}' должен быть списком, получен {type(data).__name__}.")
+            return
         
         # Валидируем каждый элемент через Pydantic
         valid_output = []
@@ -2126,6 +2195,9 @@ def read_top_urls(section, max_chars=3000):
 
     # Находим ID файла в папке с топами
     file_id = find_file_in_drive(file_name, folder_id=folder["6 news_top"]) # 6 news top
+    if not file_id:
+        print(f"❌ Файл {file_name} не найден в папке top-news.")
+        return
 
     # Скачиваем содержимое файла — список словарей с title, url и темой
     json_text = download_text_file(file_id)
@@ -2143,7 +2215,8 @@ def read_top_urls(section, max_chars=3000):
         if not url:
             continue
         try:
-            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            resp = requests.get(url, timeout=10, headers=HEADERS, proxies=proxies)
+            resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
             page_text = extract_main_text(soup, max_chars=max_chars)
             results.append({
