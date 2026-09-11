@@ -959,7 +959,7 @@ if should_run("scrape"):
     fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
     fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
     fetch_ved(dates_ved, "ved.json")
-    fetch_rbc(rubrics_rbc, dates, "rbc.json")
+    #fetch_rbc(rubrics_rbc, dates, "rbc.json")
 
     try:
         fetch_agro(dates, "agro.json")
@@ -981,7 +981,7 @@ section_to_files = {
         "kom_world.json",
         "kom_econ.json",
         "ved.json",
-        "rbc.json",
+        #"rbc.json",
         "agro.json",
         #"rg.json",
         "ria.json"
@@ -989,7 +989,7 @@ section_to_files = {
     "rus": [
         "kom_econ.json",
         "ved.json",
-        "rbc.json",
+        #"rbc.json",
         "agro.json",
         #"rg.json",
         "ria.json"
@@ -998,7 +998,7 @@ section_to_files = {
         "kom_markets.json",
         "kom_econ.json",
         "ved.json",
-        "rbc.json",
+        #"rbc.json",
         "agro.json",
         #"rg.json",
         "ria.json",
