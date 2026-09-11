@@ -973,7 +973,7 @@ if should_run("scrape"):
         pass
 
     fetch_ria(dates, "ria.json")
-    fetch_autostat(dates, "autostat.json", rubrics_auto)
+    #fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -1002,7 +1002,7 @@ section_to_files = {
         "agro.json",
         #"rg.json",
         "ria.json",
-        "autostat.json"
+       # "autostat.json"
     ]
 }
 
@@ -1355,10 +1355,10 @@ SCRAPER_FEED_FILES = [
     "kom_world.json",
     "kom_markets.json",
     "ved.json",
-    "rbc.json",
+    #"rbc.json",
     "agro.json",
     "ria.json",
-    "autostat.json",
+    #"autostat.json"
 ]
 
 
