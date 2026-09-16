@@ -42,10 +42,13 @@ from pydantic import BaseModel
 # CLI:  python dip_news.py --stage scrape
 #       python dip_news.py --stage lists prioritise
 #       python dip_news.py --stage bullets --force-thursday
+#       python dip_news.py --stage clear
+#       python dip_news.py --stage clear scrape summarize lists prioritise design
 # Env:  STAGE=scrape python dip_news.py
 #       STAGE="lists,prioritise" python dip_news.py
 _STAGE_ORDER = ["scrape", "summarize", "lists", "prioritise", "design", "top", "read_top", "bullets"]
-_VALID_STAGES = set(_STAGE_ORDER) | {"all"}
+# ``clear`` is opt-in only: never runs as part of default ``all``.
+_VALID_STAGES = set(_STAGE_ORDER) | {"all", "clear"}
 
 _parser = argparse.ArgumentParser(
     description="dip_news pipeline. By default runs every stage in order.",
@@ -56,8 +59,9 @@ _parser.add_argument(
     dest="stages",
     nargs="+",
     default=None,
-    help="One or more of: " + ", ".join(_STAGE_ORDER) + ", all. "
-         "Default: read STAGE env var, otherwise run 'all'.",
+    help="One or more of: clear, " + ", ".join(_STAGE_ORDER) + ", all. "
+         "Default: read STAGE env var, otherwise run 'all'. "
+         "`clear` empties known pipeline Drive files and never runs under `all`.",
 )
 _parser.add_argument(
     "--force-thursday",
@@ -80,6 +84,9 @@ RUN_ALL = "all" in _requested
 
 def should_run(name: str) -> bool:
     """Return True iff this stage should execute in the current invocation."""
+    # Destructive prep step: only when explicitly requested.
+    if name == "clear":
+        return "clear" in _requested
     if not (RUN_ALL or name in _requested):
         return False
     # Thursday-only stages: in default "run all" mode they still respect the
@@ -91,7 +98,9 @@ def should_run(name: str) -> bool:
 
 print(
     "Stages enabled this run:",
-    [s for s in _STAGE_ORDER if should_run(s)] or "(none)"
+    (["clear"] if should_run("clear") else [])
+    + [s for s in _STAGE_ORDER if should_run(s)]
+    or "(none)"
 )
 # ---------------------------------------------------------------------------
 
@@ -458,6 +467,66 @@ def save_to_drive(file_name: str, data, my_folder=MY_FOLDER_ID, file_format: str
     except Exception as e:
         print(f"Error creating new file '{file_name}': {e}")
         raise
+
+
+def clear_drive_outputs():
+    """Overwrite known pipeline Drive files with empty same-format placeholders.
+
+    Does **not** touch ``0_prompts``. Existing files are updated in place via
+    ``save_to_drive``; missing files are created empty so later stages have a
+    valid blank to work with.
+
+    Empty formats:
+      * JSON list feeds / section lists / tops  -> ``[]``
+      * ``_summary_cache.json``                 -> ``{}``
+      * numbered lists / final reports (``.txt``) -> empty string
+    """
+    section_names = ("world", "rus", "prices")
+    scraper_feeds = (
+        "kom_econ.json",
+        "kom_world.json",
+        "kom_markets.json",
+        "ved.json",
+        "rbc.json",
+        "agro.json",
+        "ria.json",
+        "autostat.json",
+    )
+
+    targets = []
+    # 1 news_jsons — raw feeds + summary cache
+    for name in scraper_feeds:
+        targets.append((name, folder["1 news_jsons"], [], "json"))
+    targets.append(("_summary_cache.json", folder["1 news_jsons"], {}, "json"))
+    # 2 / 3 — weekly lists and graded debug copies
+    for name in section_names:
+        targets.append((f"{name}.json", folder["2 4 new_lists_json"], [], "json"))
+        targets.append((f"{name}.json", folder["3 news_lists_json_grade"], [], "json"))
+    # 5 — numbered text lists
+    for name in section_names:
+        targets.append((f"{name}.txt", folder["5 news_lists"], "", "txt"))
+    # 6 / 7 — top themes and article bodies
+    for name in section_names:
+        targets.append((f"{name}.json", folder["6 news_top"], [], "json"))
+        targets.append((f"{name}.json", folder["7 news_top_texts"], [], "json"))
+    # 8 — final bullet reports
+    for name in section_names:
+        targets.append((f"report_{name}.txt", folder["8 news_final"], "", "txt"))
+
+    print(f"clear: overwriting {len(targets)} Drive files with empty placeholders...")
+    ok, failed = 0, 0
+    for file_name, folder_id, empty_data, file_format in targets:
+        try:
+            save_to_drive(file_name, empty_data, my_folder=folder_id, file_format=file_format)
+            ok += 1
+        except Exception as e:
+            failed += 1
+            print(f"⚠️ clear: failed to empty '{file_name}': {e}")
+    print(f"✅ clear_drive_outputs() — done ({ok} ok, {failed} failed).")
+
+
+if should_run("clear"):
+    clear_drive_outputs()
 
 
 ### Functions for scrapping
@@ -959,7 +1028,7 @@ if should_run("scrape"):
     fetch_kom(rubrics_kom_world, dates_kom, "kom_world.json")
     fetch_kom(rubrics_kom_markets, dates_kom, "kom_markets.json")
     fetch_ved(dates_ved, "ved.json")
-    #fetch_rbc(rubrics_rbc, dates, "rbc.json")
+    fetch_rbc(rubrics_rbc, dates, "rbc.json")
 
     try:
         fetch_agro(dates, "agro.json")
@@ -973,7 +1042,7 @@ if should_run("scrape"):
         pass
 
     fetch_ria(dates, "ria.json")
-    #fetch_autostat(dates, "autostat.json", rubrics_auto)
+    fetch_autostat(dates, "autostat.json", rubrics_auto)
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
@@ -981,7 +1050,7 @@ section_to_files = {
         "kom_world.json",
         "kom_econ.json",
         "ved.json",
-        #"rbc.json",
+        "rbc.json",
         "agro.json",
         #"rg.json",
         "ria.json"
@@ -989,7 +1058,7 @@ section_to_files = {
     "rus": [
         "kom_econ.json",
         "ved.json",
-        #"rbc.json",
+        "rbc.json",
         "agro.json",
         #"rg.json",
         "ria.json"
@@ -998,11 +1067,11 @@ section_to_files = {
         "kom_markets.json",
         "kom_econ.json",
         "ved.json",
-        #"rbc.json",
+        "rbc.json",
         "agro.json",
         #"rg.json",
         "ria.json",
-       # "autostat.json"
+        "autostat.json"
     ]
 }
 
@@ -1355,10 +1424,10 @@ SCRAPER_FEED_FILES = [
     "kom_world.json",
     "kom_markets.json",
     "ved.json",
-    #"rbc.json",
+    "rbc.json",
     "agro.json",
     "ria.json",
-    #"autostat.json"
+    "autostat.json",
 ]
 
 

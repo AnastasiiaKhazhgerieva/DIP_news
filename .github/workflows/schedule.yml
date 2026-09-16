@@ -4,11 +4,12 @@ on:
   schedule:
     # Среда в 14:04 MSK → 11:04 UTC
     - cron: '04 11 * * Wed'
-       # Четверг в 05:28 MSK → 08:28 UTC
-    - cron: '28 5 * * Thu'
-     # Пятница в 08:28 MSK → 5:28 UTC
-    #- cron: '28 5 * * Fri'
-
+    # Четверг в 11:28 MSK → 08:28 UTC
+    - cron: '28 08 * * Thu'
+    # Понедельник, вторник, пятница в 14:03 MSK → 11:03 UTC
+    - cron: '03 11 * * Mon,Tue,Fri'
+    # Суббота в 14:03 MSK → 11:03 UTC — только очистка файлов на Drive
+    - cron: '03 11 * * Sat'
   workflow_dispatch: {}
 
 jobs:
@@ -30,6 +31,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run dip_news.py
+        if: github.event.schedule != '03 11 * * Sat'
         env:
           #GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           #PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
@@ -42,3 +44,16 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
           PROXY: ${{ secrets.PROXY}}
         run: python dip_news.py
+
+      - name: Clear Drive outputs
+        if: github.event.schedule == '03 11 * * Sat'
+        env:
+          GOOGLE_TOKEN_B64: ${{ secrets.GOOGLE_TOKEN_B64 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          FOLDERS_SANDBOX: ${{ secrets.FOLDERS_SANDBOX}}
+          FOLDERS_MAIN: ${{ secrets.FOLDERS_MAIN}}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN}}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID}}
+          PROXY: ${{ secrets.PROXY}}
+        run: python dip_news.py --stage clear
