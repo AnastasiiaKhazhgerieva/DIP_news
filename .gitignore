@@ -3,3 +3,4 @@ keys/
 
 # Python
 __pycache__/
+.venv/
