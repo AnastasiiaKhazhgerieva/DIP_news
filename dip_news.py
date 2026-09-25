@@ -1042,7 +1042,10 @@ if should_run("scrape"):
         pass
 
     fetch_ria(dates, "ria.json")
-    fetch_autostat(dates, "autostat.json", rubrics_auto)
+    try:
+        fetch_autostat(dates, "autostat.json", rubrics_auto)
+    except Exception as e:
+        pass
 
 # Kommersant, Vedomosti, RBC, Agroinvestor, RG.ru, RIA, Autostat
 section_to_files = {
