@@ -1383,6 +1383,44 @@ def _coerce_items_list(parsed_json):
     return None
 
 
+def _flatten_top_items(data, inherited_theme=""):
+    """Collect ``{theme, title, url}`` rows from a top-stage model response.
+
+    ``response_format=json_object`` forces an object, and the Drive prompt
+    often groups articles under a theme. Accept a bare list, any list stored
+    on an object, and nested groups such as
+    ``{"themes": [{"theme": "...", "articles": [{"title", "url"}]}]}``.
+    """
+    theme_keys = ("theme", "тема", "topic", "category")
+    title_keys = ("title", "заголовок", "headline", "name")
+    url_keys = ("url", "ссылка", "link", "href")
+
+    def _text(row, keys):
+        for key in keys:
+            value = row.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
+
+    rows = []
+    if isinstance(data, list):
+        for element in data:
+            rows.extend(_flatten_top_items(element, inherited_theme))
+        return rows
+    if not isinstance(data, dict):
+        return rows
+
+    theme = _text(data, theme_keys) or inherited_theme
+    title = _text(data, title_keys)
+    url = _text(data, url_keys)
+    if title and url:
+        rows.append({"theme": theme or "undefined", "title": title, "url": url})
+    for value in data.values():
+        if isinstance(value, (list, dict)):
+            rows.extend(_flatten_top_items(value, theme))
+    return rows
+
+
 def extract_main_text(soup, max_chars=3000, min_paragraph_len=50, max_paragraphs=5):
     """Extract a short readable excerpt from a parsed HTML page."""
     _skip_words = ("cookie", "subscribe", "advert", "реклама", "подпишитесь")
@@ -2125,7 +2163,10 @@ def choose_top_urls(section):
 
     prompt_top = top_prompts.get(section, "")
     system_content = (
-        "Анализируй предоставленный список новостей и выдели 4 ключевые темы. Верни список объектов с полями theme, title, url для каждой новости."
+        "Анализируй предоставленный список новостей и выдели не больше 4 ключевых тем, "
+        "до 3 новостей на тему. Верни JSON-объект с ключом \"items\": массив "
+        '{"theme": "...", "title": "...", "url": "<точный URL из входного списка>"}. '
+        "Не меняй URL и не добавляй новости не из списка."
     )
 #     system_content = (
 #     "Анализируй предоставленный список новостей и выдели 4 ключевые темы. "
@@ -2196,34 +2237,30 @@ def choose_top_urls(section):
         # Парсим JSON и валидируем через Pydantic
         import json
         data = json.loads(content)
-        if isinstance(data, dict):
-            for key in ("items", "news", "top", "result", "data"):
-                if isinstance(data.get(key), list):
-                    data = data[key]
-                    break
-            else:
-                print(f"❌ JSON ответа для '{file_name}' не содержит списка новостей.")
-                return
-        if not isinstance(data, list):
-            print(f"❌ JSON ответа для '{file_name}' должен быть списком, получен {type(data).__name__}.")
-            return
-        
+        flat_items = _flatten_top_items(data)
+        if not flat_items and isinstance(data, dict):
+            print(f"❌ JSON ответа для '{file_name}' не содержит новостей. Ключи: {list(data.keys())}")
+
         # Валидируем каждый элемент через Pydantic
         valid_output = []
-        for item_data in data:
+        seen_urls = set()
+        for item_data in flat_items:
             try:
                 news_item = NewsItem.model_validate(item_data)
-                valid_output.append({
-                    "theme": news_item.theme,
-                    "title": news_item.title,
-                    "url": news_item.url
-                })
             except Exception as e:
                 print(f"⚠️ Пропускаем невалидный элемент: {e}")
                 continue
-                
+            if news_item.url in seen_urls:
+                continue
+            seen_urls.add(news_item.url)
+            valid_output.append({
+                "theme": news_item.theme,
+                "title": news_item.title,
+                "url": news_item.url
+            })
+
         if not valid_output:
-            print("❌ Итоговый JSON пуст.")
+            print(f"❌ Итоговый JSON пуст. Ответ модели (первые 1500 символов): {content[:1500]}")
             return
             
     except Exception as e:
@@ -2344,7 +2381,12 @@ def create_bullets(section):
         parsed_json = json.loads(list_content)
         pretty_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
     except json.JSONDecodeError:
+        parsed_json = None
         pretty_json = str(list_content)
+
+    if parsed_json == [] or not str(pretty_json).strip() or pretty_json.strip() == "[]":
+        print(f"❌ {list_file} пустой, буллиты для '{section}' не запрашиваем.")
+        return
 
     prompt_bullets = bullets_prompts.get(section, "")
     prompt_text = "\n".join([str(prompt_bullets), pretty_json])
