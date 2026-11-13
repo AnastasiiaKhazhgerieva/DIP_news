@@ -4,3 +4,6 @@ keys/
 # Python
 __pycache__/
 .venv/
+
+# Local bullet reports written by create_bullets
+report_*.txt
